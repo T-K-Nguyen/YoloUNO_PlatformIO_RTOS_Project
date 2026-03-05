@@ -103,40 +103,112 @@ void TaskLEDControl(void *pvParameters) {
 // ==========================================
 // TASK 2: NeoPixel LED Control Based on Humidity
 // ==========================================
+// Định nghĩa các dải trạng thái độ ẩm (FSM)
+enum HumidityState {
+    HUM_DRY,        // Khô hanh (< 40%)
+    HUM_OPTIMAL,    // Lý tưởng (40% - 70%)
+    HUM_DAMP,       // Ẩm thấp (> 70%)
+    HUM_ERROR       // Lỗi cảm biến
+};
+
 void neo_blinky(void *pvParameters) {
     SensorData* data = (SensorData*)pvParameters;
     
-    // Khởi tạo đối tượng NeoPixel cục bộ bên trong Task
+    // Khởi tạo NeoPixel cục bộ
     Adafruit_NeoPixel strip(LED_COUNT, NEO_PIN, NEO_GRB + NEO_KHZ800);
     strip.begin();
-    strip.show(); // Tắt LED khi khởi động
+    strip.setBrightness(150); // Giới hạn độ sáng để không bị chói và tiết kiệm điện
+    strip.show();
     
-    while(1) {
-        float currentHum = 0.0;
+    HumidityState currentState = HUM_OPTIMAL;
+    const float HUM_HYSTERESIS = 2.0f; // Trễ 2% độ ẩm để chống nhiễu màu
+    
+    // Biến lưu trữ màu hiện tại (Current RGB) và màu mục tiêu (Target RGB)
+    uint8_t currR = 0, currG = 0, currB = 0;
+    uint8_t targR = 0, targG = 0, targB = 0;
 
-        // --- SEMAPHORE SYNCHRONIZATION ---
-        // Tương tự Task 1, dùng Mutex để đồng bộ và đọc giá trị độ ẩm an toàn
+    // Biến cho hiệu ứng chớp lỗi
+    bool errorBlinkState = false;
+    uint32_t errorBlinkTimer = 0;
+
+    while(1) {
+        float hum = 0.0;
+        uint32_t lastUpdate = 0;
+
+        // --- 1. LẤY DỮ LIỆU CỰC NHANH BẰNG MUTEX ---
         if (xSemaphoreTake(data->dataMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-            currentHum = data->humidity;
+            hum = data->humidity;
+            lastUpdate = data->lastSensorUpdateTick;
             xSemaphoreGive(data->dataMutex);
         }
 
-        // --- CONDITION HANDLING & MAPPING ---
-        // Ánh xạ 3 dải độ ẩm sang 3 màu sắc khác nhau
-        if (currentHum < 40.0) {
-            // Khô hanh (< 40%): Màu Vàng (Red 255, Green 255, Blue 0)
-            strip.setPixelColor(0, strip.Color(255, 255, 0)); 
-        } else if (currentHum >= 40.0 && currentHum <= 70.0) {
-            // Lý tưởng (40% - 70%): Màu Xanh lá cây (Red 0, Green 255, Blue 0)
-            strip.setPixelColor(0, strip.Color(0, 255, 0));   
+        // --- 2. XÁC ĐỊNH TRẠNG THÁI VÀ MÀU MỤC TIÊU (MAPPING) ---
+        // Kiểm tra lỗi mất kết nối (5 giây)
+        if ((xTaskGetTickCount() - lastUpdate) > pdMS_TO_TICKS(5000)) {
+            currentState = HUM_ERROR;
         } else {
-            // Ẩm thấp (> 70%): Màu Xanh dương (Red 0, Green 0, Blue 255)
-            strip.setPixelColor(0, strip.Color(0, 0, 255));   
+            // Logic Hysteresis chuyển trạng thái độ ẩm
+            switch (currentState) {
+                case HUM_DRY:
+                    if (hum >= 40.0f) currentState = HUM_OPTIMAL;
+                    break;
+                case HUM_OPTIMAL:
+                    if (hum < (40.0f - HUM_HYSTERESIS)) currentState = HUM_DRY;
+                    else if (hum >= 70.0f) currentState = HUM_DAMP;
+                    break;
+                case HUM_DAMP:
+                    if (hum < (70.0f - HUM_HYSTERESIS)) currentState = HUM_OPTIMAL;
+                    break;
+                case HUM_ERROR:
+                    currentState = HUM_OPTIMAL; // Reset khi có tín hiệu lại
+                    break;
+            }
         }
 
-        strip.show(); // Cập nhật màu sắc ra phần cứng
-        
-        // Không cần thay đổi liên tục, kiểm tra và cập nhật màu mỗi 1 giây
-        vTaskDelay(pdMS_TO_TICKS(1000)); 
+        // Ánh xạ dải độ ẩm sang màu sắc [cite: 20, 22]
+        switch (currentState) {
+            case HUM_DRY:     // Vàng Cam (Cảnh báo khô)
+                targR = 255; targG = 120; targB = 0; 
+                break;
+            case HUM_OPTIMAL: // Xanh ngọc mượt mà (Thư giãn)
+                targR = 0; targG = 255; targB = 100; 
+                break;
+            case HUM_DAMP:    // Xanh dương sâu (Ẩm ướt)
+                targR = 0; targG = 50; targB = 255; 
+                break;
+            case HUM_ERROR:   // Đỏ (Chuẩn bị nhấp nháy)
+                targR = 255; targG = 0; targB = 0;
+                break;
+        }
+
+        // --- 3. THUẬT TOÁN LERP CHUYỂN MÀU MƯỢT MÀ (FADE EFFECT) ---
+        if (currentState != HUM_ERROR) {
+            // Từ từ tiến màu hiện tại về màu mục tiêu (mỗi bước lặp tăng/giảm 1 đơn vị)
+            if (currR < targR) currR++; else if (currR > targR) currR--;
+            if (currG < targG) currG++; else if (currG > targG) currG--;
+            if (currB < targB) currB++; else if (currB > targB) currB--;
+            
+            strip.setPixelColor(0, strip.Color(currR, currG, currB));
+        } else {
+            // Nếu lỗi, nháy đèn Đỏ chớp tắt liên tục (chu kỳ 500ms)
+            errorBlinkTimer += 20; // Task chạy mỗi 20ms
+            if (errorBlinkTimer >= 500) {
+                errorBlinkState = !errorBlinkState;
+                errorBlinkTimer = 0;
+            }
+            if (errorBlinkState) {
+                strip.setPixelColor(0, strip.Color(targR, targG, targB));
+            } else {
+                strip.setPixelColor(0, strip.Color(0, 0, 0)); // Tắt
+            }
+            // Reset current RGB để khi hết lỗi sẽ fade từ màu đen lên
+            currR = 0; currG = 0; currB = 0; 
+        }
+
+        strip.show(); // Đẩy màu ra phần cứng 
+
+        // --- 4. RENDER Ở TỐC ĐỘ 50 FPS ---
+        // Không dùng delay 1000ms nữa, delay 20ms để vòng lặp chạy liên tục tạo hiệu ứng fade
+        vTaskDelay(pdMS_TO_TICKS(20)); 
     }
 }
