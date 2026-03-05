@@ -2,5 +2,6 @@
     "idf.portWin": "COM5",
     "idf.openOcdConfigs": [
         "board/esp32s3-bridge.cfg"
-    ]
+    ],
+    "idf.currentSetup": "c:\\Users\\thuan\\v5.5.1\\esp-idf"
 }

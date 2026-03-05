@@ -9,6 +9,8 @@ struct SensorData {
     float temperature;
     float humidity;
 
+    uint32_t lastSensorUpdateTick; // Lưu lại thời điểm cuối cùng cảm biến đọc thành công
+
     // Mutex bảo vệ vùng nhớ dữ liệu (tránh đọc/ghi xung đột)
     SemaphoreHandle_t dataMutex; 
     

@@ -4,47 +4,98 @@
 // ==========================================
 // TASK 1: Single LED Blink with Temperature
 // ==========================================
+// Định nghĩa Máy trạng thái (FSM) cho hệ thống an toàn Cabin
+enum CabinTempState {
+    STATE_SAFE,         // Dưới 25°C
+    STATE_WARNING,      // Từ 25°C đến 35°C
+    STATE_CRITICAL,     // Trên 35°C
+    STATE_SENSOR_ERROR  // Lỗi mất kết nối cảm biến
+};
+
 void TaskLEDControl(void *pvParameters) {
     pinMode(GPIO_NUM_48, OUTPUT);
-    int ledState = 0;
-    
-    // Ép kiểu con trỏ vùng nhớ dùng chung để tránh biến toàn cục
     SensorData* data = (SensorData*)pvParameters;
-    int delayTime = 2000; // Giá trị mặc định
+    
+    CabinTempState currentState = STATE_SAFE;
+    bool ledIsOn = false;
+    
+    // Thông số Hysteresis (Khoảng trễ)
+    const float HYSTERESIS_MARGIN = 1.0f; 
 
     while(1) {
-        float currentTemp = 0.0;
-        
-        // --- SEMAPHORE SYNCHRONIZATION ---
-        // Sử dụng Mutex để lấy khóa bảo vệ, đảm bảo quá trình đọc nhiệt độ 
-        // không bị xung đột khi Task Sensor đang ghi dữ liệu mới.
+        float temp = 0.0;
+        uint32_t lastUpdate = 0;
+
+        // --- ĐỌC DỮ LIỆU AN TOÀN BẰNG MUTEX ---
         if (xSemaphoreTake(data->dataMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-            currentTemp = data->temperature; // Đọc dữ liệu an toàn
-            xSemaphoreGive(data->dataMutex); // Trả khóa ngay lập tức
+            temp = data->temperature;
+            lastUpdate = data->lastSensorUpdateTick;
+            xSemaphoreGive(data->dataMutex);
         }
 
-        // --- CONDITION HANDLING ---
-        // Phân loại 3 hành vi nháy LED dựa trên nhiệt độ
-        if (currentTemp < 25.0) {
-            // Trạng thái Bình thường: Nháy chậm (Chu kỳ 2s)
-            delayTime = 2000; 
-        } else if (currentTemp >= 25.0 && currentTemp < 35.0) {
-            // Trạng thái Cảnh báo: Nháy nhanh (Chu kỳ 0.5s)
-            delayTime = 500;  
-        } else {
-            // Trạng thái Nguy hiểm: Nháy rất nhanh (Chu kỳ 0.1s)
-            delayTime = 100;  
+        // --- CƠ CHẾ FAILSAFE (PHÁT HIỆN LỖI) ---
+        // Nếu qua 5 giây (5000 ticks) mà DHT20 không có dữ liệu mới -> Lỗi cảm biến
+        if ((xTaskGetTickCount() - lastUpdate) > pdMS_TO_TICKS(5000)) {
+            currentState = STATE_SENSOR_ERROR;
+        } 
+        else {
+            // --- LOGIC HYSTERESIS CHUYỂN TRẠNG THÁI ---
+            switch (currentState) {
+                case STATE_SAFE:
+                    if (temp >= 25.0f) currentState = STATE_WARNING;
+                    break;
+                case STATE_WARNING:
+                    if (temp < (25.0f - HYSTERESIS_MARGIN)) currentState = STATE_SAFE;
+                    else if (temp >= 35.0f) currentState = STATE_CRITICAL;
+                    break;
+                case STATE_CRITICAL:
+                    if (temp < (35.0f - HYSTERESIS_MARGIN)) currentState = STATE_WARNING;
+                    break;
+                case STATE_SENSOR_ERROR:
+                    // Nếu cảm biến có dữ liệu trở lại, reset về tính toán bình thường
+                    currentState = STATE_SAFE; 
+                    break;
+            }
         }
 
-        // Logic đảo trạng thái LED gốc của bạn
-        if (ledState == 0) {
-            digitalWrite(GPIO_NUM_48, HIGH); 
-        } else {
-            digitalWrite(GPIO_NUM_48, LOW); 
+        // --- THỰC THI HÀNH VI ĐÈN LED DỰA TRÊN TRẠNG THÁI ---
+        uint32_t delayTime = 2000;
+
+        switch (currentState) {
+            case STATE_SAFE:
+                // An toàn: Heartbeat nhịp nhàng (Nháy 100ms, tắt 1900ms)
+                digitalWrite(GPIO_NUM_48, HIGH);
+                vTaskDelay(pdMS_TO_TICKS(100));
+                digitalWrite(GPIO_NUM_48, LOW);
+                delayTime = 1900;
+                break;
+
+            case STATE_WARNING:
+                // Cảnh báo: Nháy đều 500ms
+                ledIsOn = !ledIsOn;
+                digitalWrite(GPIO_NUM_48, ledIsOn ? HIGH : LOW);
+                delayTime = 500;
+                break;
+
+            case STATE_CRITICAL:
+                // Nguy hiểm: Nháy chớp nhoáng (Strobe effect) gây sự chú ý mạnh
+                ledIsOn = !ledIsOn;
+                digitalWrite(GPIO_NUM_48, ledIsOn ? HIGH : LOW);
+                delayTime = 50; 
+                break;
+
+            case STATE_SENSOR_ERROR:
+                // Lỗi hệ thống: Nhấp nháy SOS liên tục báo hiệu cần bảo trì
+                for(int i=0; i<3; i++) { // 3 ngắn
+                    digitalWrite(GPIO_NUM_48, HIGH); vTaskDelay(pdMS_TO_TICKS(150));
+                    digitalWrite(GPIO_NUM_48, LOW);  vTaskDelay(pdMS_TO_TICKS(150));
+                }
+                vTaskDelay(pdMS_TO_TICKS(500));
+                delayTime = 1000; // Đợi 1s trước khi lặp lại mã SOS
+                break;
         }
-        ledState = 1 - ledState;
-        
-        // Thời gian chờ được điều chỉnh linh hoạt theo nhiệt độ
+
+        // Nghỉ ngơi theo thời gian đã tính toán
         vTaskDelay(pdMS_TO_TICKS(delayTime));
     }
 }
