@@ -6,7 +6,6 @@ void TaskSensor(void *pvParameters) {
     SensorData* data = (SensorData*)pvParameters;
     DHT20 DHT(&Wire);
     
-    Wire.begin(GPIO_NUM_11, GPIO_NUM_12);
     DHT.begin();
 
     while(1) {
@@ -32,11 +31,21 @@ void TaskSensor(void *pvParameters) {
             if (xSemaphoreTake(data->dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
                 data->temperature = currentTemp;
                 data->humidity = currentHum;
-                
-                // MẤU CHỐT Ở ĐÂY: Chỉ "gia hạn" thời gian sống khi cảm biến thực sự có dữ liệu
                 data->lastSensorUpdateTick = xTaskGetTickCount();
-                
+
+                // Xác định điều kiện tạo/kích hoạt semaphore (Task 3)
+                if (currentTemp >= 35.0) {
+                    data->currentLcdState = LCD_CRITICAL;
+                } else if (currentTemp >= 25.0) {
+                    data->currentLcdState = LCD_WARNING;
+                } else {
+                    data->currentLcdState = LCD_NORMAL;
+                }
+
                 xSemaphoreGive(data->dataMutex);
+
+                // PHÁT TÍN HIỆU ĐÁNH THỨC TASK LCD: Báo rằng đã có dữ liệu & trạng thái mới
+                xSemaphoreGive(data->lcdUpdateSemaphore);
             }
 
             if (currentTemp > 35.0) { 

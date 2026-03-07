@@ -1,11 +1,16 @@
 #include <Arduino.h>
+#include <Wire.h>
 #include "shared_data.h"
 #include "task_sensor.h"
 #include "task_actuator.h"
+#include "task_lcd.h"
 
 void setup() {
     Serial.begin(115200);
+    delay(2000);
     Serial.println("Khoi tao he thong RTOS...");
+
+    Wire.begin(GPIO_NUM_11, GPIO_NUM_12);
 
     // 1. Cấp phát vùng nhớ cho Struct
     SensorData* sharedData = new SensorData();
@@ -16,6 +21,7 @@ void setup() {
     sharedData->dataMutex = xSemaphoreCreateMutex();
     sharedData->i2cMutex = xSemaphoreCreateMutex(); 
     sharedData->tempWarningSemaphore = xSemaphoreCreateBinary();
+    sharedData->lcdUpdateSemaphore = xSemaphoreCreateBinary();
 
     // 3. Tạo Task 
     if (sharedData->dataMutex != NULL && sharedData->i2cMutex != NULL) {
@@ -27,6 +33,9 @@ void setup() {
 
         // Tạo Task 2: NeoPixel
         xTaskCreate(neo_blinky, "Neo_Task", 2048, (void*)sharedData, 2, NULL);
+    }
+    if (sharedData->lcdUpdateSemaphore != NULL) {
+        xTaskCreate(TaskLCD, "LCD_Task", 4096, (void*)sharedData, 2, NULL);
     }
 }
 
