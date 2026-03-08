@@ -1,74 +1,112 @@
 #include "task_lcd.h"
 #include <LCDI2C_Multilingual.h>
-#include <Wire.h> // Bắt buộc thêm thư viện Wire vào đây
+#include <Wire.h>
 
 void TaskLCD(void *pvParameters) {
     SensorData* data = (SensorData*)pvParameters;
-    LCDI2C_Vietnamese lcd(0x21, 16, 2); // Đảm bảo đúng địa chỉ 0x27 hoặc 0x3F
+    LCDI2C_Vietnamese lcd(0x21, 16, 2); 
+    
+    bool isLcdConnected = false;
+    bool forceDraw = true; // Cờ ép buộc vẽ lại toàn bộ màn hình khi mới cắm cáp
+    
+    // BỘ NHỚ ĐỆM (CACHE) ĐỂ THEO DÕI SỰ THAY ĐỔI (DELTA UPDATE)
+    LcdDisplayState lastState = (LcdDisplayState)-1;
+    float lastTemp = -999.0;
+    float lastHum = -999.0;
 
-    // --- KHỞI TẠO MÀN HÌNH AN TOÀN ---
+    // --- KHỞI TẠO LẦN ĐẦU ---
     if (xSemaphoreTake(data->i2cMutex, portMAX_DELAY) == pdTRUE) {
-        
-        lcd.init(); // Lệnh này sẽ phá hỏng cấu hình chân I2C hiện tại!
-        
-        
-        lcd.backlight();
-        lcd.setCursor(0, 0);
-        lcd.print("Khởi động hệ");
-        lcd.setCursor(0, 1);
-        lcd.print("thống RTOS...");
-        
+        Wire.beginTransmission(0x21);
+        if (Wire.endTransmission() == 0) {
+            lcd.init();
+            lcd.backlight();
+            isLcdConnected = true;
+        }
         xSemaphoreGive(data->i2cMutex);
     }
 
     while(1) {
-        // NGỦ ĐÔNG VÀ CHỜ ĐỢI
-        if (xSemaphoreTake(data->lcdUpdateSemaphore, portMAX_DELAY) == pdTRUE) {
+        // --- THAY ĐỔI QUAN TRỌNG NHẤT Ở ĐÂY ---
+        // Không dùng if() và portMAX_DELAY nữa. 
+        // Lệnh này ép Task LCD thức dậy nếu có Semaphore, 
+        // HOẶC tự động thức dậy nếu quá 3 giây (3000 ticks) mà không nhận được tín hiệu.
+        xSemaphoreTake(data->lcdUpdateSemaphore, pdMS_TO_TICKS(3000));
             
-            float temp = 0.0;
-            float hum = 0.0;
-            LcdDisplayState state = LCD_NORMAL;
-            uint32_t lastUpdate = 0;
+        float temp = 0.0, hum = 0.0;
+        LcdDisplayState state = LCD_NORMAL;
+        uint32_t lastUpdate = 0;
 
-            if (xSemaphoreTake(data->dataMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-                temp = data->temperature;
-                hum = data->humidity;
-                state = data->currentLcdState;
-                lastUpdate = data->lastSensorUpdateTick;
-                xSemaphoreGive(data->dataMutex);
-            }
-
-            if ((xTaskGetTickCount() - lastUpdate) > pdMS_TO_TICKS(5000)) {
-                state = LCD_ERROR;
-            }
-
-            if (xSemaphoreTake(data->i2cMutex, portMAX_DELAY) == pdTRUE) {
-                lcd.clear(); 
-
-                switch(state) {
-                    case LCD_NORMAL:
-                        lcd.setCursor(0, 0); lcd.print("TT: Bình thường");
-                        lcd.setCursor(0, 1);
-                        lcd.print("NĐ:"); lcd.print(temp, 1); lcd.print("C Ẩm:"); lcd.print(hum, 0); lcd.print("%");
-                        break;
-                    case LCD_WARNING:
-                        lcd.setCursor(0, 0); lcd.print("TT: CẢNH BÁO!");
-                        lcd.setCursor(0, 1);
-                        lcd.print("NĐ cao: "); lcd.print(temp, 1); lcd.print("C");
-                        break;
-                    case LCD_CRITICAL:
-                        lcd.noBacklight(); vTaskDelay(pdMS_TO_TICKS(100)); lcd.backlight();
-                        lcd.setCursor(0, 0); lcd.print("!! NGUY HIỂM !!");
-                        lcd.setCursor(0, 1);
-                        lcd.print("Sơ tán: "); lcd.print(temp, 1); lcd.print("C");
-                        break;
-                    case LCD_ERROR:
-                        lcd.setCursor(0, 0); lcd.print("LỖI CẢM BIẾN!!");
-                        lcd.setCursor(0, 1); lcd.print("Kiểm tra cáp I2C");
-                        break;
-                }
-                xSemaphoreGive(data->i2cMutex); 
-            }
+        // 1. CHỤP DỮ LIỆU BẰNG MUTEX
+        if (xSemaphoreTake(data->dataMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            temp = data->temperature;
+            hum = data->humidity;
+            state = data->currentLcdState;
+            lastUpdate = data->lastSensorUpdateTick;
+            xSemaphoreGive(data->dataMutex);
         }
+
+        // Ghi đè trạng thái nếu mất kết nối cảm biến quá 5 giây
+        // Nhờ việc tự thức dậy sau 3s ở trên, đoạn code này CHẮC CHẮN sẽ được thực thi!
+        if ((xTaskGetTickCount() - lastUpdate) > pdMS_TO_TICKS(5000)) {
+            state = LCD_ERROR;
+        }
+
+        // 2. KỸ THUẬT PARTIAL REDRAW VÀ AUTO-RECOVERY
+        if (xSemaphoreTake(data->i2cMutex, portMAX_DELAY) == pdTRUE) {
+            
+            Wire.beginTransmission(0x21);
+            if (Wire.endTransmission() == 0) { 
+                
+                if (!isLcdConnected) {
+                    lcd.init();
+                    lcd.backlight();
+                    isLcdConnected = true;
+                    forceDraw = true; 
+                }
+                
+                // --- CẬP NHẬT DÒNG 1 ---
+                if (state != lastState || forceDraw) {
+                    lcd.setCursor(0, 0);
+                    switch(state) {
+                        case LCD_NORMAL:   lcd.print("TT: Bình thường "); break;
+                        case LCD_WARNING:  lcd.print("TT: CẢNH BÁO!   "); break;
+                        case LCD_CRITICAL: lcd.print("!! NGUY HIỂM !! "); break;
+                        case LCD_ERROR:    lcd.print("LỖI CẢM BIẾN!!  "); break;
+                    }
+                }
+
+                if (state == LCD_CRITICAL) {
+                    lcd.noBacklight(); vTaskDelay(pdMS_TO_TICKS(100)); lcd.backlight();
+                }
+
+                // --- CẬP NHẬT DÒNG 2 ---
+                if (state == LCD_ERROR) {
+                    if (state != lastState || forceDraw) {
+                        lcd.setCursor(0, 1); 
+                        lcd.print("Kiểm tra cáp DHT");
+                    }
+                } else {
+                    if (temp != lastTemp || hum != lastHum || state != lastState || forceDraw) {
+                        lcd.setCursor(0, 1);
+                        lcd.print("NĐ:"); lcd.print(temp, 1); 
+                        lcd.print("C Ẩm:"); lcd.print(hum, 0); 
+                        lcd.print("% "); 
+                    }
+                }
+
+                lastState = state;
+                lastTemp = temp;
+                lastHum = hum;
+                forceDraw = false; 
+
+            } else {
+                if (isLcdConnected) {
+                    isLcdConnected = false; 
+                }
+            }
+            
+            xSemaphoreGive(data->i2cMutex); 
+        }
+        // Lưu ý: Đã xóa bớt một dấu "}" đóng của lệnh if(xSemaphoreTake...) cũ ở cuối vòng lặp nhé
     }
 }
