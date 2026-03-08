@@ -1,73 +1,55 @@
 #include <Arduino.h>
+#include <Wire.h>
 #include "shared_data.h"
-
-void TaskLEDControl(void *pvParameters) {
-  pinMode(GPIO_NUM_48, OUTPUT);
-  int ledState = 0;
-  
-  // 1. Cast the parameter back to our shared data struct
-  SensorData* data = (SensorData*)pvParameters;
-
-  while(1) {
-    // 2. Use semaphores to manage task synchronization 
-    // Wait for the Sensor Task to signal that a new temperature reading is ready
-    if (xSemaphoreTake(data->tempWarningSemaphore, portMAX_DELAY) == pdTRUE) {
-        
-        float currentTemp = 20.0; // Default safe value
-        
-        // Safely read the shared temperature variable using Mutex
-        if (xSemaphoreTake(data->dataMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-            currentTemp = data->temperature;
-            xSemaphoreGive(data->dataMutex);
-        }
-
-        // 3. Redefine the LED blinking behavior to respond to different temperature conditions 
-        int delayTime = 2000; // Your original default delay
-
-        if (currentTemp < 25.0) {
-            delayTime = 2000; // Behavior 1: Normal (Original 2-second blink)
-        } else if (currentTemp >= 25.0 && currentTemp < 35.0) {
-            delayTime = 500;  // Behavior 2: Warning (Fast blink)
-        } else {
-            delayTime = 100;  // Behavior 3: Critical (Very fast blink)
-        }
-
-        // Your exact original LED toggle logic
-        if (ledState == 0) {
-          digitalWrite(GPIO_NUM_48, HIGH); // Turn ON LED
-        } else {
-          digitalWrite(GPIO_NUM_48, LOW); // Turn OFF LED
-        }
-        ledState = 1 - ledState;
-        
-        // Your original delay, now dynamically responding to temperature
-        vTaskDelay(pdMS_TO_TICKS(delayTime)); 
-    }
-  }
-}
+#include "task_sensor.h"
+#include "task_actuator.h"
+#include "task_lcd.h"
 
 void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(115200);
-  
-  // Initialize the shared struct on the heap (removes global variables) 
-  SensorData* sharedData = new SensorData();
-  sharedData->temperature = 20.0; // Set an initial safe temperature
-  
-  // Initialize Semaphores
-  sharedData->dataMutex = xSemaphoreCreateMutex();
-  sharedData->tempWarningSemaphore = xSemaphoreCreateBinary();
+    Serial.begin(115200);
+    delay(2000);
+    Serial.println("Khoi tao he thong RTOS...");
 
-  // Pass the sharedData pointer into your original task
-  xTaskCreate(TaskLEDControl, "LED Control", 2048, (void*)sharedData, 2, NULL);
-  
-  // Note: You will also need to create your Sensor Task here later so it can "Give" the semaphore.
+    Wire.begin(GPIO_NUM_11, GPIO_NUM_12);
+
+    // 1. Cấp phát vùng nhớ cho Struct
+    SensorData* sharedData = new SensorData();
+    sharedData->temperature = 0.0f;
+    sharedData->humidity = 0.0f;
+    sharedData->lastSensorUpdateTick = xTaskGetTickCount();
+    sharedData->currentLcdState = LCD_NORMAL;
+
+    // --- THÊM: KHỞI TẠO NGƯỠNG MẶC ĐỊNH ---
+    sharedData->tempWarning = 25.0f;
+    sharedData->tempCritical = 35.0f;
+    sharedData->humDry = 40.0f;
+    sharedData->humDamp = 70.0f;
+    sharedData->humCritical = 85.0f;
+    // --------------------------------------
+
+    // 2. Khởi tạo các Semaphore và Mutex
+    sharedData->dataMutex = xSemaphoreCreateMutex();
+    sharedData->i2cMutex = xSemaphoreCreateMutex(); 
+    sharedData->tempWarningSemaphore = xSemaphoreCreateBinary();
+    sharedData->lcdUpdateSemaphore = xSemaphoreCreateBinary();
+
+    // 3. Tạo Task 
+    if (sharedData->dataMutex != NULL && sharedData->i2cMutex != NULL) {
+        // Tạo Task Cảm biến
+        xTaskCreate(TaskSensor, "Sensor_Task", 4096, (void*)sharedData, 3, NULL);
+        
+        // Tạo Task 1: LED Control
+        xTaskCreate(TaskLEDControl, "LED_Task", 2048, (void*)sharedData, 2, NULL);
+
+        // Tạo Task 2: NeoPixel
+        xTaskCreate(neo_blinky, "Neo_Task", 2048, (void*)sharedData, 2, NULL);
+    }
+    if (sharedData->lcdUpdateSemaphore != NULL) {
+        xTaskCreate(TaskLCD, "LCD_Task", 4096, (void*)sharedData, 2, NULL);
+    }
 }
 
 void loop() {
-  // Serial.println("Hello Custom Board");
-  // delay(1000);
-  
-  // FreeRTOS best practice: delete the loop task if it's not being used to save memory
-  vTaskDelete(NULL); 
+    // Dọn dẹp task loop để tiết kiệm tài nguyên
+    vTaskDelete(NULL); 
 }

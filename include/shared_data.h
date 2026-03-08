@@ -5,18 +5,30 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
+enum LcdDisplayState {
+    LCD_NORMAL,
+    LCD_WARNING,
+    LCD_CRITICAL,
+    LCD_ERROR
+};
+
 struct SensorData {
     float temperature;
     float humidity;
+    uint32_t lastSensorUpdateTick;
+    LcdDisplayState currentLcdState; 
 
-    // Mutex bảo vệ vùng nhớ dữ liệu (tránh đọc/ghi xung đột)
+    // --- THÊM: CÁC NGƯỠNG CÀI ĐẶT ĐỘNG (DYNAMIC THRESHOLDS) ---
+    float tempWarning;   // Ngưỡng cảnh báo nhiệt độ
+    float tempCritical;  // Ngưỡng nguy hiểm nhiệt độ
+    float humDry;        // Ngưỡng độ ẩm khô hanh
+    float humDamp;       // Ngưỡng độ ẩm ẩm ướt
+    float humCritical;   // Ngưỡng độ ẩm gây ngạt
+
     SemaphoreHandle_t dataMutex; 
-    
-    // Mutex bảo vệ đường truyền I2C (bắt buộc khi có nhiều thiết bị I2C)
     SemaphoreHandle_t i2cMutex;
-
-    // Semaphore kích hoạt cảnh báo nhiệt độ
     SemaphoreHandle_t tempWarningSemaphore; 
+    SemaphoreHandle_t lcdUpdateSemaphore; 
 };
 
 #endif
