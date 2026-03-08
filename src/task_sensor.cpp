@@ -33,16 +33,13 @@ void TaskSensor(void *pvParameters) {
                 data->humidity = currentHum;
                 data->lastSensorUpdateTick = xTaskGetTickCount();
 
-                // --- LOGIC SENSOR FUSION: ĐÁNH GIÁ KẾT HỢP NHIỆT ĐỘ & ĐỘ ẨM ---
-                // 1. Trạng thái NGUY HIỂM: Nhiệt độ cực cao HOẶC Độ ẩm cực cao (gây ngạt)
-                if (currentTemp >= 35.0 || currentHum >= 85.0) {
+                // --- LOGIC SENSOR FUSION ĐỘNG ---
+                if (currentTemp >= data->tempCritical || currentHum >= data->humCritical) {
                     data->currentLcdState = LCD_CRITICAL;
                 } 
-                // 2. Trạng thái CẢNH BÁO: Hơi nóng HOẶC Quá khô (<40%) HOẶC Hơi ẩm (>70%)
-                else if (currentTemp >= 25.0 || currentHum < 40.0 || currentHum >= 70.0) {
+                else if (currentTemp >= data->tempWarning || currentHum < data->humDry || currentHum >= data->humDamp) {
                     data->currentLcdState = LCD_WARNING;
                 } 
-                // 3. Trạng thái BÌNH THƯỜNG: Mọi thông số đều lý tưởng
                 else {
                     data->currentLcdState = LCD_NORMAL;
                 }
@@ -53,7 +50,7 @@ void TaskSensor(void *pvParameters) {
                 xSemaphoreGive(data->lcdUpdateSemaphore);
             }
 
-            if (currentTemp > 35.0) { 
+            if (currentTemp > data->tempCritical) { 
                 xSemaphoreGive(data->tempWarningSemaphore);
             }
         } else {

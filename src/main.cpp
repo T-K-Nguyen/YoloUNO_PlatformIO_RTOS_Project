@@ -16,6 +16,16 @@ void setup() {
     SensorData* sharedData = new SensorData();
     sharedData->temperature = 0.0f;
     sharedData->humidity = 0.0f;
+    sharedData->lastSensorUpdateTick = xTaskGetTickCount();
+    sharedData->currentLcdState = LCD_NORMAL;
+
+    // --- THÊM: KHỞI TẠO NGƯỠNG MẶC ĐỊNH ---
+    sharedData->tempWarning = 25.0f;
+    sharedData->tempCritical = 35.0f;
+    sharedData->humDry = 40.0f;
+    sharedData->humDamp = 70.0f;
+    sharedData->humCritical = 85.0f;
+    // --------------------------------------
 
     // 2. Khởi tạo các Semaphore và Mutex
     sharedData->dataMutex = xSemaphoreCreateMutex();

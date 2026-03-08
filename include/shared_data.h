@@ -15,23 +15,20 @@ enum LcdDisplayState {
 struct SensorData {
     float temperature;
     float humidity;
+    uint32_t lastSensorUpdateTick;
+    LcdDisplayState currentLcdState; 
 
-    uint32_t lastSensorUpdateTick; // Lưu lại thời điểm cuối cùng cảm biến đọc thành công
+    // --- THÊM: CÁC NGƯỠNG CÀI ĐẶT ĐỘNG (DYNAMIC THRESHOLDS) ---
+    float tempWarning;   // Ngưỡng cảnh báo nhiệt độ
+    float tempCritical;  // Ngưỡng nguy hiểm nhiệt độ
+    float humDry;        // Ngưỡng độ ẩm khô hanh
+    float humDamp;       // Ngưỡng độ ẩm ẩm ướt
+    float humCritical;   // Ngưỡng độ ẩm gây ngạt
 
-    // biến lưu trạng thái màn hình
-    LcdDisplayState currentLcdState;
-
-    // Mutex bảo vệ vùng nhớ dữ liệu (tránh đọc/ghi xung đột)
     SemaphoreHandle_t dataMutex; 
-    
-    // Mutex bảo vệ đường truyền I2C (bắt buộc khi có nhiều thiết bị I2C)
     SemaphoreHandle_t i2cMutex;
-
-    // Semaphore kích hoạt cảnh báo nhiệt độ
-    SemaphoreHandle_t tempWarningSemaphore;
-
-    // Thêm Semaphore mới để đánh thức Task LCD
-    SemaphoreHandle_t lcdUpdateSemaphore;
+    SemaphoreHandle_t tempWarningSemaphore; 
+    SemaphoreHandle_t lcdUpdateSemaphore; 
 };
 
 #endif
