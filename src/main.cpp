@@ -4,6 +4,8 @@
 #include "task_sensor.h"
 #include "task_actuator.h"
 #include "task_lcd.h"
+#include "global.h"
+
 
 void setup() {
     Serial.begin(115200);
@@ -43,8 +45,7 @@ void setup() {
 
         // Tạo Task 2: NeoPixel
         xTaskCreate(neo_blinky, "Neo_Task", 2048, (void*)sharedData, 2, NULL);
-    }
-    if (sharedData->lcdUpdateSemaphore != NULL) {
+    }    if (sharedData->lcdUpdateSemaphore != NULL) {
         xTaskCreate(TaskLCD, "LCD_Task", 4096, (void*)sharedData, 2, NULL);
     }
 }
