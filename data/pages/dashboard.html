@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+<link rel="stylesheet" href="css/bootstrap.min.css">
+<link rel="stylesheet" href="css/style.css">
+
+</head>
+<body>
+<h2>
+<i class="bi bi-speedometer2"></i>
+Device Dashboard
+</h2>
+
+<div class="row g-4">
+
+<div class="col-md-4">
+
+<div class="sensor-card">
+
+<div class="sensor-title">
+<i class="bi bi-thermometer-half"></i>
+Temperature
+</div>
+
+<div id="temp" class="sensor-value">
+--
+</div>
+
+</div>
+
+</div>
+
+<div class="col-md-4">
+
+<div class="sensor-card">
+
+<div class="sensor-title">
+<i class="bi bi-droplet-half"></i>
+Humidity
+</div>
+
+<div id="hum" class="sensor-value">
+--
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<br>
+
+<div class="card p-4">
+
+<h5>
+<i class="bi bi-graph-up"></i>
+Sensor Chart
+</h5>
+
+<canvas id="sensorChart"></canvas>
+
+</div>
+
+<script src="js/sidebar.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</body>
+</html>

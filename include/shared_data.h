@@ -11,10 +11,10 @@ enum LcdDisplayState {
     LCD_CRITICAL,
     LCD_ERROR
 };
-
 struct SensorData {
     float temperature;
     float humidity;
+
     uint32_t lastSensorUpdateTick;
     LcdDisplayState currentLcdState; 
 

@@ -1,13 +1,21 @@
-async function loadPage(page){
+function loadPage(page){
 
-    const res = await fetch(page)
+fetch(page)
 
-    const html = await res.text()
+.then(res => res.text())
 
-    document.getElementById("content").innerHTML = html
+.then(html => {
+
+document.getElementById("content").innerHTML = html
+
+// chạy script nếu cần
+if(page.includes("dashboard")){
+loadDashboard()
+}
+
+})
 
 }
 
-window.onload = () => {
-    loadPage("dashboard.html")
-}
+// load trang đầu
+loadPage("pages/home.html")
