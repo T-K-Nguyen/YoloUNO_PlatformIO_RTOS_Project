@@ -4,6 +4,7 @@
 #include "task_sensor.h"
 #include "task_actuator.h"
 #include "task_lcd.h"
+#include "task_webserver.h"
 #include "global.h"
 
 
@@ -48,6 +49,9 @@ void setup() {
     }    if (sharedData->lcdUpdateSemaphore != NULL) {
         xTaskCreate(TaskLCD, "LCD_Task", 4096, (void*)sharedData, 2, NULL);
     }
+    InitAP();
+    InitWebServer();
+
 }
 
 void loop() {
