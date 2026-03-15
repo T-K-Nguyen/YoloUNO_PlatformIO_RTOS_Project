@@ -1,15 +1,13 @@
-#include "task_wifi.h"
+#include "settingWifiAp.h"
 
 bool WIFI_STATE = 0;
 bool WIFI_SEND = 0;
 bool WIFI_RECONNECTING = 0;
 
-String wifi_ssid = "";
-String wifi_password = "";
 
 
-constexpr char AP_SSID[] = "ESP32-Hy";
-constexpr char AP_PASSWORD[] = "123456789";
+
+
 
 
 void InitAP() {
@@ -18,7 +16,7 @@ void InitAP() {
 
     WiFi.mode(WIFI_AP_STA);
 
-    bool ok = WiFi.softAP("ESP32-Hy", "123456789");
+    bool ok = WiFi.softAP(ssid, password);
     if(!ok) {
         Serial.println("softAP failed!");
         return;

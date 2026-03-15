@@ -1,3 +1,30 @@
+/* Dashboard sensor value & unit */
+.sensor-value {
+	font-size: 2.5rem;
+	font-weight: 600;
+}
+.sensor-unit {
+	font-size: 1.5rem;
+	color: #888;
+}
+.temp-color {
+	color: #ff5722;
+}
+.hum-color {
+	color: #2196f3;
+}
+/* Dashboard cards custom style */
+.card-title {
+	letter-spacing: 1px;
+	font-weight: 500;
+}
+.card {
+	border-radius: 1.2rem;
+	transition: box-shadow 0.2s;
+}
+.card:hover {
+	box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+}
 body{
 margin:0;
 font-family:Segoe UI;
@@ -56,6 +83,11 @@ background:#2a2a40;
 
 .sidebar i{
 font-size:18px;
+}
+
+svg{
+width:20px;
+height:20px;
 }
 
 /* Content */

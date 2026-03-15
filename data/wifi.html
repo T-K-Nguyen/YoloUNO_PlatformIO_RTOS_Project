@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>WiFi Configuration</title>
+        <link rel="stylesheet" href="css/bootstrap.min.css">
+        <link rel="stylesheet" href="css/style.css">
+      </head>
+      <body>
+        <div class="wrapper">
+          <div class="sidebar">
+            <h3 class="logo">
+              <svg class="bi" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
+                <use xlink:href="icons/cpu.svg"/>
+              </svg>
+              <span>IoT Panel</span>
+            </h3>
+            <ul>
+              <li>
+                <a href="index.html">
+                  <svg class="bi" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
+                    <use xlink:href="icons/house-door.svg"/>
+                  </svg>
+                  <span>Home</span>
+                </a>
+              </li>
+              <li>
+                <a href="dashboard.html">
+                  <svg class="bi" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
+                    <use xlink:href="icons/speedometer2.svg"/>
+                  </svg>
+                  <span>Dashboard</span>
+                </a>
+              </li>
+              <li>
+                <a href="wifi.html">
+                  <svg class="bi" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
+                    <use xlink:href="icons/wifi.svg"/>
+                  </svg>
+                  <span>WiFi Config</span>
+                </a>
+              </li>
+              <li>
+                <a href="devices.html">
+                  <svg class="bi" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
+                    <use xlink:href="icons/cpu.svg"/>
+                  </svg>
+                  <span>Devices</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="content">
+            <div class="container">
+              <div class="row justify-content-center">
+                <div class="col-md-6">
+                  <div class="wifi-card">
+                    <h3 class="text-center mb-4">📶 WiFi Configuration</h3>
+                    <form id="wifi-config-form">
+                      <div class="mb-3">
+                        <label for="ssid" class="form-label">SSID</label>
+                        <input type="text" class="form-control" id="ssid" placeholder="Enter WiFi name">
+                      </div>
+                      <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" placeholder="Enter password">
+                      </div>
+                      <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg" id="wifi-connect-btn">Connect</button>
+                      </div>
+                    </form>
+                    <p id="result" class="text-center mt-3"></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <script src="js/wifi.js"></script>
+      </body>
+      </html>

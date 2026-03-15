@@ -9,22 +9,16 @@
 #include <ElegantOTA.h>
 #include <global.h>
 
-extern String output1State;
-extern String output2State;
-extern String output3State;
-extern String output4State;
 
 struct Sensor;  // Forward declaration
 
 extern void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
 extern void parseWebSocketMessage(AsyncWebSocketClient *client, const String &message);
+extern void sendSensorDataToWebSocket(float temperature, float humidity);
+extern void handleToggleDevice(const String &message);
+extern void handleWifiConfig(const String &message);
 
-void handleGetHistory(const String &message);
-
-void handleSettings(const String &message);
-void handleWifiConfig(const String &message);
-void handleMQTT(const String &message);
-void sendWebSocketMessage(String message);
+extern void sendWebSocketMessage(String message);
 
 extern void InitWebServer();
 

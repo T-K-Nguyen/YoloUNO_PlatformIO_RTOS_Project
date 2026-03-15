@@ -27,8 +27,42 @@ void parseWebSocketMessage(AsyncWebSocketClient *client, const String &message) 
     if (message.startsWith("{\"action\":\"wifi\"")) {
         // Xử lý cấu hình WiFi
         handleWifiConfig(message);
+    } else if (message.startsWith("{\"action\":\"toggle_device")) {
+        // Xử lý toggle motor/fan
+        handleToggleDevice(message);
     }
 
+}
+
+// Xử lý lệnh toggle motor/fan qua WebSocket
+void handleToggleDevice(const String &message) {
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, message);
+    if (error) {
+        Serial.print("JSON parsing failed (toggle device): ");
+        Serial.println(error.c_str());
+        return;
+    }
+    String device = doc["device"] | "";
+    int pin = -1;
+    if (device == "motor") pin = 10;
+    else if (device == "fan") pin = 8;
+    else {
+        Serial.println("Unknown device!");
+        return;
+    }
+    pinMode(pin, OUTPUT);
+    int current = digitalRead(pin);
+    digitalWrite(pin, !current);
+    Serial.printf("Toggled %s (pin %d) to %d\n", device.c_str(), pin, !current);
+    // Gửi trạng thái mới về client
+    JsonDocument resp;
+    resp["type"] = "device_status";
+    resp["device"] = device;
+    resp["state"] = !current;
+    String respBuf;
+    serializeJson(resp, respBuf);
+    sendWebSocketMessage(respBuf);
 }
 
 
@@ -81,11 +115,13 @@ void handleWifiConfig(const String &message) {
 
 void initWebServer() {
 
-  if (!LittleFS.begin(true))
-  {
-      Serial.println("An Error has occurred while mounting LittleFS");
-      return;
-  }
+    InitAP();
+
+    if (!LittleFS.begin(true))
+    {
+        Serial.println("An Error has occurred while mounting LittleFS");
+        return;
+    }
 
     File root = LittleFS.open("/");
     File file = root.openNextFile();
@@ -93,69 +129,41 @@ void initWebServer() {
         Serial.println(file.name());
         file = root.openNextFile();
     }
-  ElegantOTA.begin(&server);
 
-  ws.onEvent(onEvent);
 
-  server.addHandler(&ws);
+    ElegantOTA.begin(&server);
 
-    // server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request)
-    //           { request->send(LittleFS, "/js/script.js", "application/javascript"); });
-    // server.on("/css/style.css", HTTP_GET, [](AsyncWebServerRequest *request)
-    //           { request->send(LittleFS, "/css/style.css", "text/css"); });
+    ws.onEvent(onEvent);
+
+    server.addHandler(&ws);
 
 
 
 
-            // Định nghĩa các route cho server
+    // Định nghĩa serveStatic cho tất cả các đường dẫn tĩnh
+    server.serveStatic("/css", LittleFS, "/css");
+    server.serveStatic("/js", LittleFS, "/js");
+    server.serveStatic("/icons", LittleFS, "/icons");
+
+    // fallback cho các site khác
+    server.serveStatic("dashboard.html", LittleFS, "/dashboard.html");
+    server.serveStatic("wifi.html", LittleFS, "/wifi.html");
+    server.serveStatic("devices.html", LittleFS, "/devices.html");
+
+    
+    // Route riêng cho trang chủ
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(LittleFS, "/index.html", "text/html"); });
+        { request->send(LittleFS, "/index.html", "text/html"); });
+    server.on("index.html", HTTP_GET, [](AsyncWebServerRequest *request)
+        { request->send(LittleFS, "/index.html", "text/html"); });
+        
+    // 404 cho các route không tồn tại
+    server.onNotFound([](AsyncWebServerRequest *request)
+        { request->send(404, "text/plain", "Not found"); });
 
 
-    server.on("/components/sidebar.html", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(LittleFS, "/components/sidebar.html", "text/html"); });
-
-    server.on("/pages/home.html", HTTP_GET, [](AsyncWebServerRequest *request)
-              { request->send(LittleFS, "/pages/home.html", "text/html"); });
-
-    server.on("/pages/dashboard.html", HTTP_GET, [](AsyncWebServerRequest *request)
-              { request->send(LittleFS, "/pages/dashboard.html", "text/html"); });
-
-    server.on("/pages/wifi.html", HTTP_GET, [](AsyncWebServerRequest *request)
-              { request->send(LittleFS, "/pages/wifi.html", "text/html"); });
-
-
-
-
-
-            // Định nghĩa các route cho các file JavaScript
-    server.on("/js/sidebar.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(LittleFS, "/js/sidebar.js", "application/javascript"); });
-
-    server.on("/js/script.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(LittleFS, "/js/script.js", "application/javascript"); });
-
-    server.on("/js/router.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(LittleFS, "/js/router.js", "application/javascript"); });
-
-    server.on("/js/wifi.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(LittleFS, "/js/wifi.js", "application/javascript"); });
-
-    server.on("/js/dashboard.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(LittleFS, "/js/dashboard.js", "application/javascript"); });
-
-
-            //Định nghĩa các route cho các file CSS
-    server.on("/css/style.css", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(LittleFS, "/css/style.css", "text/css"); });
-
-    server.on("/css/bootstrap.min.css", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(LittleFS, "/css/bootstrap.min.css", "text/css"); });
-
-
-
-  server.begin();
-  Serial.println("HTTP server started");
+    server.begin();
+    Serial.println("HTTP server started");
 }
 
 
@@ -166,6 +174,7 @@ void webServerTask(void *pvParameters) {
     }
 }
 
+// Task xử lý WebSocket đã ngắt kết nối và xử lý OTA
 void webSocketTask(void *pvParameters) {
     while (true) {
         ws.cleanupClients();
@@ -175,8 +184,20 @@ void webSocketTask(void *pvParameters) {
     }
 }
 
+
 void sendWebSocketMessage(String message) {
     ws.textAll(message); 
+}
+
+// Hàm gửi dữ liệu cảm biến lên WebSocket cho dashboard (gọi từ task_sensor)
+void sendSensorDataToWebSocket(float temperature, float humidity) {
+    JsonDocument doc;
+    doc["type"] = "sensor";
+    doc["temperature"] = temperature;
+    doc["humidity"] = humidity;
+    String jsonBuffer;
+    serializeJson(doc, jsonBuffer);
+    sendWebSocketMessage(jsonBuffer);
 }
 
 

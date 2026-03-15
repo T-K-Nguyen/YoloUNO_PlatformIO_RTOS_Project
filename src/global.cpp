@@ -8,7 +8,8 @@ float glob_humidity = 0;
 String ssid = "esp32_myown";
 String password = "123456789";
 
-
+String wifi_ssid;
+String wifi_password;
 
 
 bool led1_state = false;

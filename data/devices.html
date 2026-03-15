@@ -12,7 +12,7 @@
 <body>
     
 <div class="wrapper">
-
+  
     <div class="sidebar">
     <h3 class="logo">
       <svg class="bi" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
@@ -56,12 +56,30 @@
     </ul>
   </div>
 
-
-
-
-
-
-
+  <div class="content">
+    <div class="container">
+      <div class="row justify-content-center mt-5">
+        <div class="col-md-6">
+          <div class="card shadow p-4 text-center">
+            <h4 class="mb-4">Control Devices</h4>
+            <div class="d-flex justify-content-center gap-4">
+              <button id="motor-btn" class="btn btn-lg btn-primary">
+                <i class="bi bi-door-open"></i> motor (Pin 10)
+              </button>
+              <button id="fan-btn" class="btn btn-lg btn-success">
+                <i class="bi bi-fan"></i> FAN (Pin 8)
+              </button>
+            </div>
+            <div id="led-status" class="mt-4"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="js/devices.js"></script>
+<!-- Bootstrap Icons CDN for lightbulb icon -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 </div>
 </body>
 </html>

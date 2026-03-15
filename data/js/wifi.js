@@ -1,6 +1,12 @@
 const ws = new WebSocket(`ws://${location.host}/ws`); // Kết nối WebSocket
 
-document.getElementById('wifiForm').addEventListener('submit', async function(e) {
+function initWifi(){
+
+
+
+}
+
+document.getElementById('wifi-config-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     const ssid = document.getElementById('ssid').value;
     const password = document.getElementById('password').value;
@@ -36,6 +42,5 @@ document.querySelectorAll('input[required]').forEach(input => {
 });
 
 window.addEventListener('DOMContentLoaded', function() {
-    checkInputs('wifiForm', 'wifiConnectBtn');
-    
+    checkInputs('wifi-config-form', 'wifi-connect-btn');
 });

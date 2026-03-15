@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "shared_data.h" // Chứa định nghĩa SensorData
+#include "global.h" 
 
 // Khai báo nguyên mẫu hàm (Function Prototype)
 void TaskSensor(void *pvParameters);

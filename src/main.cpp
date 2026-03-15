@@ -42,14 +42,14 @@ void setup() {
         xTaskCreate(TaskSensor, "Sensor_Task", 4096, (void*)sharedData, 3, NULL);
         
         // Tạo Task 1: LED Control
-        xTaskCreate(TaskLEDControl, "LED_Task", 2048, (void*)sharedData, 2, NULL);
+        // xTaskCreate(TaskLEDControl, "LED_Task", 2048, (void*)sharedData, 2, NULL);
 
         // Tạo Task 2: NeoPixel
-        xTaskCreate(neo_blinky, "Neo_Task", 2048, (void*)sharedData, 2, NULL);
+        // xTaskCreate(neo_blinky, "Neo_Task", 2048, (void*)sharedData, 2, NULL);
     }    if (sharedData->lcdUpdateSemaphore != NULL) {
         xTaskCreate(TaskLCD, "LCD_Task", 4096, (void*)sharedData, 2, NULL);
     }
-    InitAP();
+
     InitWebServer();
 
 }
