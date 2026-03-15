@@ -3,6 +3,9 @@
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
+bool isAPMode = true;
+
+
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
 {
     if (type == WS_EVT_CONNECT)
@@ -111,10 +114,18 @@ void handleWifiConfig(const String &message) {
 
     // Gọi hàm kết nối WiFi
     InitWifi();
+
+    // Gửi thông báo về client: chỉ thành công nếu WIFI_STATE == 1
+    JsonDocument resp;
+    resp["type"] = "wifi_connected";
+    resp["success"] = (WIFI_STATE == 1);
+    String respBuf;
+    serializeJson(resp, respBuf);
+    sendWebSocketMessage(respBuf);
 }
 
 void initWebServer() {
-
+    // Khởi tạo mode WIFI_AP_STA để có thể vừa làm AP vừa kết nối WiFi
     InitAP();
 
     if (!LittleFS.begin(true))
@@ -141,21 +152,7 @@ void initWebServer() {
 
 
     // Định nghĩa serveStatic cho tất cả các đường dẫn tĩnh
-    server.serveStatic("/css", LittleFS, "/css");
-    server.serveStatic("/js", LittleFS, "/js");
-    server.serveStatic("/icons", LittleFS, "/icons");
-
-    // fallback cho các site khác
-    server.serveStatic("dashboard.html", LittleFS, "/dashboard.html");
-    server.serveStatic("wifi.html", LittleFS, "/wifi.html");
-    server.serveStatic("devices.html", LittleFS, "/devices.html");
-
-    
-    // Route riêng cho trang chủ
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-        { request->send(LittleFS, "/index.html", "text/html"); });
-    server.on("index.html", HTTP_GET, [](AsyncWebServerRequest *request)
-        { request->send(LittleFS, "/index.html", "text/html"); });
+    server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
         
     // 404 cho các route không tồn tại
     server.onNotFound([](AsyncWebServerRequest *request)
@@ -189,7 +186,7 @@ void sendWebSocketMessage(String message) {
     ws.textAll(message); 
 }
 
-// Hàm gửi dữ liệu cảm biến lên WebSocket cho dashboard (gọi từ task_sensor)
+// Hàm gửi dữ liệu cảm biến lên WebSocket cho dashboard 
 void sendSensorDataToWebSocket(float temperature, float humidity) {
     JsonDocument doc;
     doc["type"] = "sensor";

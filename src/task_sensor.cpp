@@ -54,7 +54,7 @@ void TaskSensor(void *pvParameters) {
                 xSemaphoreGive(data->tempWarningSemaphore);
             }
 
-            // Gọi hàm gửi dữ liệu cảm biến lên WebSocket (định nghĩa ở task_webserver.cpp)
+            // Gọi hàm gửi dữ liệu cảm biến lên WebSocket 
             sendSensorDataToWebSocket(currentTemp, currentHum);
         } else {
             // Khi bạn rút dây, dhtStatus sẽ khác 0, code rẽ nhánh vào đây

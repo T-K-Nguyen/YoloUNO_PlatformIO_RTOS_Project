@@ -1,10 +1,5 @@
+
 const ws = new WebSocket(`ws://${location.host}/ws`); // Kết nối WebSocket
-
-function initWifi(){
-
-
-
-}
 
 document.getElementById('wifi-config-form').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -22,6 +17,21 @@ document.getElementById('wifi-config-form').addEventListener('submit', async fun
         password: password
     }));
 });
+
+// Lắng nghe phản hồi từ server để alert khi kết nối WiFi thành công/thất bại
+ws.onmessage = function(event) {
+    try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "wifi_connected") {
+            if (msg.success) {
+                alert("Kết nối WiFi thành công! Đang chuyển về trang chủ...");
+                window.location.href = "/";
+            } else {
+                alert("Kết nối WiFi thất bại! Vui lòng kiểm tra lại thông tin.");
+            }
+        }
+    } catch (e) {}
+}
 
 function checkInputs(formId, buttonId) {
     const form = document.getElementById(formId);
