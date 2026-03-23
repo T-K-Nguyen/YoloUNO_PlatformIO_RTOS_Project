@@ -48,6 +48,7 @@ void TaskSensor(void *pvParameters) {
 
                 // PHÁT TÍN HIỆU ĐÁNH THỨC TASK LCD: Báo rằng đã có dữ liệu & trạng thái mới
                 xSemaphoreGive(data->lcdUpdateSemaphore);
+
             }
 
             if (currentTemp > data->tempCritical) { 

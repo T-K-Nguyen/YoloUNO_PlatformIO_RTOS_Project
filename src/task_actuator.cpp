@@ -20,7 +20,11 @@ void TaskLEDControl(void *pvParameters) {
     bool ledIsOn = false;
     
     // Thông số Hysteresis (Khoảng trễ)
-    const float HYSTERESIS_MARGIN = 1.0f; 
+    const float HYSTERESIS_MARGIN = 1.0f;
+    const uint32_t MANUAL_OVERRIDE_TIMEOUT_MS = 10000; // 10 giây
+    
+    // --- TRACKING STATE CHANGE CỦA MANUAL OVERRIDE ---
+    bool prevManualOverride = false;
 
     while(1) {
         // 1. Khởi tạo biến cục bộ với giá trị an toàn mặc định
@@ -28,8 +32,11 @@ void TaskLEDControl(void *pvParameters) {
         float tWarn = 25.0f; 
         float tCrit = 35.0f;
         uint32_t lastUpdate = 0;
+        bool manualOverride = false;
+        bool manualLedState = false;
+        uint32_t lastManualLedTick = 0;
 
-        // --- ĐỌC DỮ LIỆU & NGƯỠNG ĐỘNG BẰNG MUTEX ---
+        // --- ĐỌC DỮ LIỆU & NGƯỠNG ĐỘNG + MANUAL OVERRIDE BẰNG MUTEX ---
         if (xSemaphoreTake(data->dataMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
             temp = data->temperature;
             lastUpdate = data->lastSensorUpdateTick;
@@ -38,7 +45,37 @@ void TaskLEDControl(void *pvParameters) {
             tWarn = data->tempWarning;
             tCrit = data->tempCritical;
             
+            // --- KIỂM TRA MANUAL OVERRIDE VÀ TIMEOUT ---
+            manualOverride = data->manualLedOverride;
+            manualLedState = data->manualLedState;
+            lastManualLedTick = data->lastManualLedTick;
+            
+            // Kiểm tra timeout 10s - nếu quá hạn thì xóa override
+            if (manualOverride && (xTaskGetTickCount() - lastManualLedTick) > pdMS_TO_TICKS(MANUAL_OVERRIDE_TIMEOUT_MS)) {
+                data->manualLedOverride = false;
+                manualOverride = false;
+            }
+            
             xSemaphoreGive(data->dataMutex);
+        }
+
+        // --- DETECT STATE CHANGE: OVERRIDE BẬT/TẮT ---
+        if (manualOverride && !prevManualOverride) {
+            // Override vừa bật
+            Serial.printf("[LEDCTRL] Manual LED override activated: LED = %s\n", manualLedState ? "ON" : "OFF");
+        } 
+        else if (!manualOverride && prevManualOverride) {
+            // Override vừa tắt (timeout hoặc user toggle OFF)
+            Serial.println("[LEDCTRL] Manual LED override disabled - back to FSM");
+        }
+        prevManualOverride = manualOverride;
+
+        // --- NẾU CÓ MANUAL OVERRIDE THÌ BỎ QUA FSM ---
+        if (manualOverride) {
+            // Trực tiếp điều khiển LED theo trạng thái từ RPC
+            digitalWrite(GPIO_NUM_48, manualLedState ? HIGH : LOW);
+            vTaskDelay(pdMS_TO_TICKS(200));
+            continue; // Bỏ qua logic FSM, quay lại loop
         }
 
         // --- CƠ CHẾ FAILSAFE (PHÁT HIỆN LỖI) ---

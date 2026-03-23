@@ -1,9 +1,15 @@
 #include "task_webserver.h"
+#include "task_check_info.h"
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
 bool isAPMode = true;
+
+// WiFi connection status tracking
+volatile bool wifiConnectionPending = false;
+unsigned long wifiConnectionStartTime = 0;
+TaskHandle_t wifiTaskHandle = NULL;
 
 
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
@@ -84,6 +90,9 @@ void handleWifiConfig(const String &message) {
     // Extract values từ JSON và kiểm tra kỹ hơn
     const char* ssid = doc["ssid"];
     const char* password = doc["password"];
+    const char* coreiotToken = doc["coreiot_token"];
+    const char* coreiotServer = doc["coreiot_server"];
+    const char* coreiotPort = doc["coreiot_port"];
 
     // Kiểm tra SSID kỹ lưỡng
     if (ssid == nullptr || strlen(ssid) == 0) {
@@ -102,23 +111,48 @@ void handleWifiConfig(const String &message) {
         return;
     }
 
+    String newWifiSsid = String(ssid);
+    String newWifiPass = (password != nullptr) ? String(password) : "";
+
     // Gán giá trị sau khi đã kiểm tra
-    wifi_ssid = String(ssid);
-    wifi_password = (password != nullptr) ? String(password) : "";
+    WifiSetCredentials(newWifiSsid, newWifiPass);
+    WifiSetSendFlag(true);
+
+    String tokenSnapshot;
+    String serverSnapshot;
+    String portSnapshot;
+    if (xMutexCloudConfig != NULL &&
+        xSemaphoreTake(xMutexCloudConfig, pdMS_TO_TICKS(50)) == pdTRUE) {
+        tokenSnapshot = CORE_IOT_TOKEN;
+        serverSnapshot = CORE_IOT_SERVER;
+        portSnapshot = CORE_IOT_PORT;
+        xSemaphoreGive(xMutexCloudConfig);
+    } else {
+        tokenSnapshot = CORE_IOT_TOKEN;
+        serverSnapshot = CORE_IOT_SERVER;
+        portSnapshot = CORE_IOT_PORT;
+    }
+
+    String tokenToSave = (coreiotToken != nullptr && strlen(coreiotToken) > 0) ? String(coreiotToken) : tokenSnapshot;
+    String serverToSave = (coreiotServer != nullptr && strlen(coreiotServer) > 0) ? String(coreiotServer) : serverSnapshot;
+    String portToSave = (coreiotPort != nullptr && strlen(coreiotPort) > 0) ? String(coreiotPort) : portSnapshot;
 
     Serial.println("Received WiFi config:");
-    Serial.println("SSID: " + wifi_ssid);
-    Serial.println("Password length: " + String(wifi_password.length()));
+    Serial.println("SSID: " + newWifiSsid);
+    Serial.println("Password length: " + String(newWifiPass.length()));
 
-    WIFI_SEND = 1;
+    // Lưu cấu hình vào file ngay
+    bool saved = Save_info_File(newWifiSsid, newWifiPass, tokenToSave, serverToSave, portToSave, false);
+    if (!saved) {
+        Serial.println("Failed to persist config to /info.dat");
+    }
 
-    // Gọi hàm kết nối WiFi
-    InitWifi();
-
-    // Gửi thông báo về client: chỉ thành công nếu WIFI_STATE == 1
+    // ⚠️ KHÔNG gọi InitWifi() ở đây! Nó sẽ block WebSocket handler
+    // Thay vào đó, chỉ set flag để coreiot_task xử lý kết nối
+    // Gửi thông báo về client: konfigurasi đã lưu
     JsonDocument resp;
-    resp["type"] = "wifi_connected";
-    resp["success"] = (WIFI_STATE == 1);
+    resp["type"] = "wifi_config_saved";
+    resp["success"] = saved;
     String respBuf;
     serializeJson(resp, respBuf);
     sendWebSocketMessage(respBuf);
@@ -173,9 +207,37 @@ void webServerTask(void *pvParameters) {
 
 // Task xử lý WebSocket đã ngắt kết nối và xử lý OTA
 void webSocketTask(void *pvParameters) {
+    static bool lastWifiStatus = false;
+    static unsigned long lastStatusCheck = 0;
+    
     while (true) {
         ws.cleanupClients();
         ElegantOTA.loop();
+        
+        // Monitor WiFi status changes and notify clients
+        bool currentWifiStatus = WiFi.status() == WL_CONNECTED;
+        unsigned long now = millis();
+        
+        if (currentWifiStatus != lastWifiStatus) {
+            lastWifiStatus = currentWifiStatus;
+            
+            // Send WiFi status update to all clients
+            JsonDocument resp;
+            if (currentWifiStatus) {
+                resp["type"] = "wifi_connected";
+                resp["success"] = true;
+                resp["ip"] = WiFi.localIP().toString();
+                Serial.println("[WebSocket] Notifying clients - WiFi connected!");
+            } else {
+                resp["type"] = "wifi_disconnected";
+                resp["success"] = false;
+                Serial.println("[WebSocket] Notifying clients - WiFi disconnected!");
+            }
+            
+            String respBuf;
+            serializeJson(resp, respBuf);
+            sendWebSocketMessage(respBuf);
+        }
         
         vTaskDelay(100 / portTICK_PERIOD_MS); // kiểm tra mỗi 100ms
     }
