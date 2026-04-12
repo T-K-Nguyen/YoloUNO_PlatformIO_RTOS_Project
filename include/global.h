@@ -16,7 +16,6 @@
 #include <PubSubClient.h>
 #include <HTTPClient.h>
 #include <Wire.h>
-#include <ESP32Servo.h>
 
 // Include task headers
 
@@ -33,8 +32,6 @@
 #define BOOT_PIN 0
 
 // Declare global variables
-extern String WIFI_SSID;
-extern String WIFI_PASS;
 extern String CORE_IOT_TOKEN;
 extern String CORE_IOT_SERVER;
 extern String CORE_IOT_PORT;
@@ -43,8 +40,5 @@ extern String ssid;
 extern String password;
 extern String wifi_ssid;
 extern String wifi_password;
-
-
-
 
 #endif
