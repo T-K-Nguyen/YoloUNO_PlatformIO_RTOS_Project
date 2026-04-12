@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESP32 Dashboard</title>
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="css/bootstrap.css" rel="stylesheet" />
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="css/all.min.css" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="wrapper">
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+          <i class="fa-solid fa-microchip me-2"></i>ESP32 IoT
+        </div>
+        <ul class="sidebar-nav">
+          <li>
+            <a href="index.html" class="active"
+              ><i class="fa-solid fa-chart-pie"></i> Dashboard</a
+            >
+          </li>
+
+        </ul>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h1 class="page-title mb-0">Dashboard</h1>
+          <!-- Hamburger for mobile -->
+          <button
+            class="btn btn-primary d-md-none"
+            id="sidebarToggle"
+            type="button"
+            title="Toggle Sidebar"
+          >
+            <i class="fa-solid fa-bars"></i>
+          </button>
+        </div>
+
+        <div class="row g-4">
+          <!-- Temperature Card -->
+          <div class="col-md-6 col-xl-4">
+            <div class="custom-card">
+              <div
+                class="d-flex align-items-center justify-content-between mb-3"
+              >
+                <h5 class="card-title mb-0">Nhiệt độ</h5>
+                <div
+                  class="icon-shape bg-danger bg-opacity-10 text-danger rounded-circle"
+                >
+                  <i class="fa-solid fa-temperature-half fs-4"></i>
+                </div>
+              </div>
+              <div class="card-value">
+                <span id="temperature-value">28.5</span><span>°C</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Humidity Card -->
+          <div class="col-md-6 col-xl-4">
+            <div class="custom-card">
+              <div
+                class="d-flex align-items-center justify-content-between mb-3"
+              >
+                <h5 class="card-title mb-0">Độ ẩm</h5>
+                <div
+                  class="icon-shape bg-info bg-opacity-10 text-info rounded-circle"
+                >
+                  <i class="fa-solid fa-droplet fs-4"></i>
+                </div>
+              </div>
+              <div class="card-value">
+                <span id="humidity-value">65</span><span>%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Bootstrap & Custom JS -->
+    <script src="js/bootstrap.bundle.min.js"></script>
+    <script src="js/script.js"></script>
+    <script src="js/dashboard.js"></script>
+  </body>
+</html>

@@ -308,6 +308,22 @@ void initWebServer()
 
     server.addHandler(&ws);
 
+    // Route goc: tra ve giao dien theo interface (AP hoac STA)
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+              {
+        AsyncClient *client = request->client();
+        IPAddress localIP = client ? client->localIP() : IPAddress((uint32_t)0);
+        IPAddress apIP = WiFi.softAPIP();
+
+        if (localIP == apIP)
+        {
+            request->send(LittleFS, "/index.html", "text/html");
+        }
+        else
+        {
+            request->send(LittleFS, "/dashboard_sta.html", "text/html");
+        } });
+
     // Định nghĩa serveStatic cho tất cả các đường dẫn tĩnh
     server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 
