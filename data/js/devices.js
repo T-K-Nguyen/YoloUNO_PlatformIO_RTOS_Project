@@ -1,18 +1,18 @@
 let ws = null;
 let reconnectTimer = null;
 
-let motorBtn = null;
-let fanBtn = null;
-let motorStatus = null;
-let fanStatus = null;
-let motorIcon = null;
-let fanIcon = null;
+let fan1Btn = null;
+let fan2Btn = null;
+let fan1Status = null;
+let fan2Status = null;
+let fan1Icon = null;
+let fan2Icon = null;
 
 function applyDeviceUI(device, state, fault) {
-    const isMotor = device === 'motor';
-    const btn = isMotor ? motorBtn : fanBtn;
-    const statusEl = isMotor ? motorStatus : fanStatus;
-    const iconEl = isMotor ? motorIcon : fanIcon;
+    const isFan1 = device === 'fan1';
+    const btn = isFan1 ? fan1Btn : fan2Btn;
+    const statusEl = isFan1 ? fan1Status : fan2Status;
+    const iconEl = isFan1 ? fan1Icon : fan2Icon;
 
     if (!btn || !statusEl || !iconEl) return;
 
@@ -26,7 +26,7 @@ function applyDeviceUI(device, state, fault) {
     }
 
     statusEl.textContent = state ? 'Đang bật' : 'Đang tắt';
-    statusEl.className = isMotor
+    statusEl.className = isFan1
         ? (state ? 'mt-3 fw-semibold text-success' : 'mt-3 fw-semibold text-muted')
         : (state ? 'mt-3 fw-semibold text-info' : 'mt-3 fw-semibold text-muted');
 
@@ -95,22 +95,22 @@ function connectWebSocket() {
 }
 
 window.addEventListener('DOMContentLoaded', function() {
-    motorBtn = document.getElementById('motor-btn');
-    fanBtn = document.getElementById('fan-btn');
-    motorStatus = document.getElementById('motorStatus');
-    fanStatus = document.getElementById('fanStatus');
-    motorIcon = document.getElementById('motorIcon');
-    fanIcon = document.getElementById('fanIcon');
+    fan1Btn = document.getElementById('fan1-btn');
+    fan2Btn = document.getElementById('fan2-btn');
+    fan1Status = document.getElementById('fan1Status');
+    fan2Status = document.getElementById('fan2Status');
+    fan1Icon = document.getElementById('fan1Icon');
+    fan2Icon = document.getElementById('fan2Icon');
 
-    if (motorBtn) {
-        motorBtn.addEventListener('change', (e) => {
-            sendDeviceState('motor', e.target.checked);
+    if (fan1Btn) {
+        fan1Btn.addEventListener('change', (e) => {
+            sendDeviceState('fan1', e.target.checked);
         });
     }
 
-    if (fanBtn) {
-        fanBtn.addEventListener('change', (e) => {
-            sendDeviceState('fan', e.target.checked);
+    if (fan2Btn) {
+        fan2Btn.addEventListener('change', (e) => {
+            sendDeviceState('fan2', e.target.checked);
         });
     }
 

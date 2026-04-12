@@ -5,8 +5,8 @@ AsyncWebSocket ws("/ws");
 
 bool isAPMode = true;
 
-static const int MOTOR_PIN = 10;
-static const int FAN_PIN = 8;
+static const int FAN1_PIN = 38;
+static const int FAN2_PIN = 8;
 
 struct DeviceRuntimeState
 {
@@ -16,24 +16,24 @@ struct DeviceRuntimeState
     bool initialized = false;
 };
 
-static DeviceRuntimeState motorState;
-static DeviceRuntimeState fanState;
+static DeviceRuntimeState fan1State;
+static DeviceRuntimeState fan2State;
 
 static DeviceRuntimeState *getDeviceState(const String &device)
 {
-    if (device == "motor")
-        return &motorState;
-    if (device == "fan")
-        return &fanState;
+    if (device == "fan1")
+        return &fan1State;
+    if (device == "fan2")
+        return &fan2State;
     return nullptr;
 }
 
 static int getDevicePin(const String &device)
 {
-    if (device == "motor")
-        return MOTOR_PIN;
-    if (device == "fan")
-        return FAN_PIN;
+    if (device == "fan1")
+        return FAN1_PIN;
+    if (device == "fan2")
+        return FAN2_PIN;
     return -1;
 }
 
@@ -111,8 +111,8 @@ static void syncDeviceFromHardware(const String &device, bool notifyOnChange)
 
 static void syncAllDevices(bool notifyOnChange)
 {
-    syncDeviceFromHardware("motor", notifyOnChange);
-    syncDeviceFromHardware("fan", notifyOnChange);
+    syncDeviceFromHardware("fan1", notifyOnChange);
+    syncDeviceFromHardware("fan2", notifyOnChange);
 }
 
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
@@ -122,27 +122,27 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
         Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
         syncAllDevices(false);
 
-        JsonDocument motorResp;
-        motorResp["type"] = "device_sync";
-        motorResp["device"] = "motor";
-        motorResp["desired"] = motorState.desired;
-        motorResp["actual"] = motorState.actual;
-        motorResp["state"] = motorState.actual;
-        motorResp["fault"] = motorState.fault;
-        String motorBuf;
-        serializeJson(motorResp, motorBuf);
-        client->text(motorBuf);
+        JsonDocument fan1Resp;
+        fan1Resp["type"] = "device_sync";
+        fan1Resp["device"] = "fan1";
+        fan1Resp["desired"] = fan1State.desired;
+        fan1Resp["actual"] = fan1State.actual;
+        fan1Resp["state"] = fan1State.actual;
+        fan1Resp["fault"] = fan1State.fault;
+        String fan1Buf;
+        serializeJson(fan1Resp, fan1Buf);
+        client->text(fan1Buf);
 
-        JsonDocument fanResp;
-        fanResp["type"] = "device_sync";
-        fanResp["device"] = "fan";
-        fanResp["desired"] = fanState.desired;
-        fanResp["actual"] = fanState.actual;
-        fanResp["state"] = fanState.actual;
-        fanResp["fault"] = fanState.fault;
-        String fanBuf;
-        serializeJson(fanResp, fanBuf);
-        client->text(fanBuf);
+        JsonDocument fan2Resp;
+        fan2Resp["type"] = "device_sync";
+        fan2Resp["device"] = "fan2";
+        fan2Resp["desired"] = fan2State.desired;
+        fan2Resp["actual"] = fan2State.actual;
+        fan2Resp["state"] = fan2State.actual;
+        fan2Resp["fault"] = fan2State.fault;
+        String fan2Buf;
+        serializeJson(fan2Resp, fan2Buf);
+        client->text(fan2Buf);
     }
     else if (type == WS_EVT_DISCONNECT)
     {
@@ -177,7 +177,7 @@ void parseWebSocketMessage(AsyncWebSocketClient *client, const String &message)
     }
 }
 
-// Xử lý lệnh toggle motor/fan qua WebSocket
+// Xử lý lệnh toggle fan1/fan2 qua WebSocket
 void handleToggleDevice(const String &message)
 {
     JsonDocument doc;
@@ -284,8 +284,8 @@ void initWebServer()
     // Khởi tạo mode WIFI_AP_STA để có thể vừa làm AP vừa kết nối WiFi
     InitAP();
 
-    ensureDeviceInitialized("motor");
-    ensureDeviceInitialized("fan");
+    ensureDeviceInitialized("fan1");
+    ensureDeviceInitialized("fan2");
     syncAllDevices(false);
 
     if (!LittleFS.begin(true))

@@ -16,6 +16,7 @@
 #include <PubSubClient.h>
 #include <HTTPClient.h>
 #include <Wire.h>
+#include <ESP32Servo.h>
 
 // Include task headers
 
@@ -43,13 +44,7 @@ extern String password;
 extern String wifi_ssid;
 extern String wifi_password;
 
-extern bool pump_state;
-extern bool fan_state;
-extern bool led1_state;
-extern bool led2_state;
 
-extern boolean isWifiConnected;
 
-extern SemaphoreHandle_t xBinarySemaphoreInternet;
 
 #endif
