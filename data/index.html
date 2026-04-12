@@ -1,67 +1,102 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IOT Dashboard 13/3</title>
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESP32 Dashboard</title>
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="css/bootstrap.css" rel="stylesheet" />
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="css/all.min.css" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="wrapper">
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+          <i class="fa-solid fa-microchip me-2"></i>ESP32 IoT
+        </div>
+        <ul class="sidebar-nav">
+          <li>
+            <a href="index.html" class="active"
+              ><i class="fa-solid fa-chart-pie"></i> Dashboard</a
+            >
+          </li>
+          <li>
+            <a href="config.html"
+              ><i class="fa-solid fa-gear"></i> Configuration</a
+            >
+          </li>
+          <li>
+            <a href="control.html"
+              ><i class="fa-solid fa-sliders"></i> Device Control</a
+            >
+          </li>
+        </ul>
+      </aside>
 
-<link rel="stylesheet" href="css/bootstrap.min.css">
-<link rel="stylesheet" href="css/style.css">
+      <!-- Main Content -->
+      <main class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h1 class="page-title mb-0">Dashboard</h1>
+          <!-- Hamburger for mobile -->
+          <button
+            class="btn btn-primary d-md-none"
+            id="sidebarToggle"
+            type="button"
+            title="Toggle Sidebar"
+          >
+            <i class="fa-solid fa-bars"></i>
+          </button>
+        </div>
 
-</head>
-<body>
-    
-<div class="wrapper">
+        <div class="row g-4">
+          <!-- Temperature Card -->
+          <div class="col-md-6 col-xl-4">
+            <div class="custom-card">
+              <div
+                class="d-flex align-items-center justify-content-between mb-3"
+              >
+                <h5 class="card-title mb-0">Nhiệt độ</h5>
+                <div
+                  class="icon-shape bg-danger bg-opacity-10 text-danger rounded-circle"
+                >
+                  <i class="fa-solid fa-temperature-half fs-4"></i>
+                </div>
+              </div>
+              <div class="card-value">
+                <span id="temperature-value">28.5</span><span>°C</span>
+              </div>
+            </div>
+          </div>
 
-    <div class="sidebar">
-    <h3 class="logo">
-      <svg class="bi" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
-        <use xlink:href="icons/cpu.svg"/>
-      </svg>
-      <span>IoT Panel</span>
-    </h3>
-    <ul>
-      <li>
-        <a href="index.html">
-          <svg class="bi" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
-            <use xlink:href="icons/house-door.svg"/>
-          </svg>
-          <span>Home</span>
-        </a>
-      </li>
-      <li>
-        <a href="dashboard.html">
-          <svg class="bi" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
-            <use xlink:href="icons/speedometer2.svg"/>
-          </svg>
-          <span>Dashboard</span>
-        </a>
-      </li>
-      <li>
-        <a href="wifi.html">
-          <svg class="bi" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
-            <use xlink:href="icons/wifi.svg"/>
-          </svg>
-          <span>WiFi Config</span>
-        </a>
-      </li>
-      <li>
-        <a href="devices.html">
-          <svg class="bi" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
-            <use xlink:href="icons/cpu.svg"/>
-          </svg>
-          <span>Devices</span>
-        </a>
-      </li>
-    </ul>
-  </div>
+          <!-- Humidity Card -->
+          <div class="col-md-6 col-xl-4">
+            <div class="custom-card">
+              <div
+                class="d-flex align-items-center justify-content-between mb-3"
+              >
+                <h5 class="card-title mb-0">Độ ẩm</h5>
+                <div
+                  class="icon-shape bg-info bg-opacity-10 text-info rounded-circle"
+                >
+                  <i class="fa-solid fa-droplet fs-4"></i>
+                </div>
+              </div>
+              <div class="card-value">
+                <span id="humidity-value">65</span><span>%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
 
-
-
-
-
-
-
-</div>
-</body>
+    <!-- Bootstrap & Custom JS -->
+    <script src="js/bootstrap.bundle.min.js"></script>
+    <script src="js/script.js"></script>
+    <script src="js/dashboard.js"></script>
+  </body>
 </html>

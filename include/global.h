@@ -17,8 +17,6 @@
 #include <HTTPClient.h>
 #include <Wire.h>
 
-
-
 // Include task headers
 
 #include "shared_data.h"
@@ -32,7 +30,6 @@
 #define LED1_PIN 48
 #define LED2_PIN 41
 #define BOOT_PIN 0
-
 
 // Declare global variables
 extern String WIFI_SSID;
@@ -55,6 +52,4 @@ extern boolean isWifiConnected;
 
 extern SemaphoreHandle_t xBinarySemaphoreInternet;
 
-
 #endif
-

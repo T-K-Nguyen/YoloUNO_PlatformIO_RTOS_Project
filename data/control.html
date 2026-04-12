@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESP32 Device Control</title>
+    <link href="css/bootstrap.css" rel="stylesheet" />
+    <link rel="stylesheet" href="css/all.min.css" />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="wrapper">
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+          <i class="fa-solid fa-microchip me-2"></i>ESP32 IoT
+        </div>
+        <ul class="sidebar-nav">
+          <li>
+            <a href="index.html"
+              ><i class="fa-solid fa-chart-pie"></i> Dashboard</a
+            >
+          </li>
+          <li>
+            <a href="config.html"
+              ><i class="fa-solid fa-gear"></i> Configuration</a
+            >
+          </li>
+          <li>
+            <a href="control.html" class="active"
+              ><i class="fa-solid fa-sliders"></i> Device Control</a
+            >
+          </li>
+        </ul>
+      </aside>
+
+      <main class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h1 class="page-title mb-0">Device Control</h1>
+          <button
+            class="btn btn-primary d-md-none"
+            id="sidebarToggle"
+            title="Toggle Sidebar">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+        </div>
+
+        <div class="row g-4">
+          <!-- Motor Control Card -->
+          <div class="col-md-6 col-xl-4">
+            <div
+              class="custom-card d-flex flex-column align-items-center justify-content-center text-center p-5">
+              <div
+                class="icon-shape bg-success bg-opacity-10 text-success rounded-circle mb-4"
+                style="width: 80px; height: 80px">
+                <i class="fa-solid fa-gear fs-1" id="motorIcon"></i>
+              </div>
+              <h4 class="fw-bold mb-4">Động cơ (Motor)</h4>
+              <div class="form-check form-switch fs-3 mb-0 d-flex justify-content-center ps-0">
+                <input
+                  class="form-check-input ms-0"
+                  type="checkbox"
+                  role="switch"
+                  id="motor-btn" />
+                <label class="visually-hidden" for="motor-btn">Toggle Motor</label>
+              </div>
+              <p class="text-muted mt-3 fw-semibold" id="motorStatus">
+                Đang tắt
+              </p>
+            </div>
+          </div>
+
+          <!-- Fan Control Card -->
+          <div class="col-md-6 col-xl-4">
+            <div
+              class="custom-card d-flex flex-column align-items-center justify-content-center text-center p-5">
+              <div
+                class="icon-shape bg-info bg-opacity-10 text-info rounded-circle mb-4"
+                style="width: 80px; height: 80px">
+                <i class="fa-solid fa-fan fs-1" id="fanIcon"></i>
+              </div>
+              <h4 class="fw-bold mb-4">Quạt (Fan)</h4>
+              <div class="form-check form-switch fs-3 mb-0 d-flex justify-content-center ps-0">
+                <input
+                  class="form-check-input ms-0"
+                  type="checkbox"
+                  role="switch"
+                  id="fan-btn" />
+                <label class="visually-hidden" for="fan-btn">Toggle Fan</label>
+              </div>
+              <p class="text-muted mt-3 fw-semibold" id="fanStatus">Đang tắt</p>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="js/bootstrap.bundle.js"></script>
+    <script src="js/script.js"></script>
+    <script src="js/devices.js"></script>
+  </body>
+</html>

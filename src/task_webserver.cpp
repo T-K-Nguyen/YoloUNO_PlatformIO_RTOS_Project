@@ -5,12 +5,144 @@ AsyncWebSocket ws("/ws");
 
 bool isAPMode = true;
 
+static const int MOTOR_PIN = 10;
+static const int FAN_PIN = 8;
+
+struct DeviceRuntimeState
+{
+    bool desired = false;
+    bool actual = false;
+    bool fault = false;
+    bool initialized = false;
+};
+
+static DeviceRuntimeState motorState;
+static DeviceRuntimeState fanState;
+
+static DeviceRuntimeState *getDeviceState(const String &device)
+{
+    if (device == "motor")
+        return &motorState;
+    if (device == "fan")
+        return &fanState;
+    return nullptr;
+}
+
+static int getDevicePin(const String &device)
+{
+    if (device == "motor")
+        return MOTOR_PIN;
+    if (device == "fan")
+        return FAN_PIN;
+    return -1;
+}
+
+static void sendDeviceSyncMessage(const String &device, bool desired, bool actual, bool fault)
+{
+    JsonDocument resp;
+    resp["type"] = "device_sync";
+    resp["device"] = device;
+    resp["desired"] = desired;
+    resp["actual"] = actual;
+    resp["state"] = actual;
+    resp["fault"] = fault;
+
+    String respBuf;
+    serializeJson(resp, respBuf);
+    sendWebSocketMessage(respBuf);
+}
+
+static void sendDeviceFaultMessage(const String &device, bool desired, bool actual)
+{
+    JsonDocument resp;
+    resp["type"] = "device_fault";
+    resp["device"] = device;
+    resp["desired"] = desired;
+    resp["actual"] = actual;
+    resp["message"] = "Device state mismatch detected";
+
+    String respBuf;
+    serializeJson(resp, respBuf);
+    sendWebSocketMessage(respBuf);
+}
+
+static void ensureDeviceInitialized(const String &device)
+{
+    DeviceRuntimeState *state = getDeviceState(device);
+    int pin = getDevicePin(device);
+    if (state == nullptr || pin < 0)
+        return;
+
+    if (!state->initialized)
+    {
+        pinMode(pin, OUTPUT);
+        digitalWrite(pin, LOW);
+        state->desired = false;
+        state->actual = (digitalRead(pin) == HIGH);
+        state->fault = (state->actual != state->desired);
+        state->initialized = true;
+    }
+}
+
+static void syncDeviceFromHardware(const String &device, bool notifyOnChange)
+{
+    DeviceRuntimeState *state = getDeviceState(device);
+    int pin = getDevicePin(device);
+    if (state == nullptr || pin < 0)
+        return;
+
+    ensureDeviceInitialized(device);
+
+    bool previousActual = state->actual;
+    bool previousFault = state->fault;
+    state->actual = (digitalRead(pin) == HIGH);
+    state->fault = (state->actual != state->desired);
+
+    if (state->fault && !previousFault)
+    {
+        sendDeviceFaultMessage(device, state->desired, state->actual);
+    }
+
+    if (notifyOnChange && (state->actual != previousActual || state->fault != previousFault))
+    {
+        sendDeviceSyncMessage(device, state->desired, state->actual, state->fault);
+    }
+}
+
+static void syncAllDevices(bool notifyOnChange)
+{
+    syncDeviceFromHardware("motor", notifyOnChange);
+    syncDeviceFromHardware("fan", notifyOnChange);
+}
 
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
 {
     if (type == WS_EVT_CONNECT)
     {
         Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+        syncAllDevices(false);
+
+        JsonDocument motorResp;
+        motorResp["type"] = "device_sync";
+        motorResp["device"] = "motor";
+        motorResp["desired"] = motorState.desired;
+        motorResp["actual"] = motorState.actual;
+        motorResp["state"] = motorState.actual;
+        motorResp["fault"] = motorState.fault;
+        String motorBuf;
+        serializeJson(motorResp, motorBuf);
+        client->text(motorBuf);
+
+        JsonDocument fanResp;
+        fanResp["type"] = "device_sync";
+        fanResp["device"] = "fan";
+        fanResp["desired"] = fanState.desired;
+        fanResp["actual"] = fanState.actual;
+        fanResp["state"] = fanState.actual;
+        fanResp["fault"] = fanState.fault;
+        String fanBuf;
+        serializeJson(fanResp, fanBuf);
+        client->text(fanBuf);
     }
     else if (type == WS_EVT_DISCONNECT)
     {
@@ -18,86 +150,109 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
     }
     else if (type == WS_EVT_DATA)
     {
-        String message = String((char *)data);
+        String message;
+        message.reserve(len + 1);
+        for (size_t i = 0; i < len; i++)
+        {
+            message += (char)data[i];
+        }
         parseWebSocketMessage(client, message); // Gọi hàm xử lý tin nhắn
         Serial.printf("WebSocket client #%u sent data: %s\n", client->id(), message.c_str());
-  }
+    }
 }
 
-void parseWebSocketMessage(AsyncWebSocketClient *client, const String &message) {
+void parseWebSocketMessage(AsyncWebSocketClient *client, const String &message)
+{
     // Xử lý tin nhắn từ client xử lý lệnh action
 
-    if (message.startsWith("{\"action\":\"wifi\"")) {
+    if (message.startsWith("{\"action\":\"wifi\""))
+    {
         // Xử lý cấu hình WiFi
         handleWifiConfig(message);
-    } else if (message.startsWith("{\"action\":\"toggle_device")) {
+    }
+    else if (message.startsWith("{\"action\":\"toggle_device"))
+    {
         // Xử lý toggle motor/fan
         handleToggleDevice(message);
     }
-
 }
 
 // Xử lý lệnh toggle motor/fan qua WebSocket
-void handleToggleDevice(const String &message) {
+void handleToggleDevice(const String &message)
+{
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, message);
-    if (error) {
+    if (error)
+    {
         Serial.print("JSON parsing failed (toggle device): ");
         Serial.println(error.c_str());
         return;
     }
     String device = doc["device"] | "";
-    int pin = -1;
-    if (device == "motor") pin = 10;
-    else if (device == "fan") pin = 8;
-    else {
+    DeviceRuntimeState *state = getDeviceState(device);
+    int pin = getDevicePin(device);
+    if (state == nullptr || pin < 0)
+    {
         Serial.println("Unknown device!");
         return;
     }
-    pinMode(pin, OUTPUT);
-    int current = digitalRead(pin);
-    digitalWrite(pin, !current);
-    Serial.printf("Toggled %s (pin %d) to %d\n", device.c_str(), pin, !current);
-    // Gửi trạng thái mới về client
-    JsonDocument resp;
-    resp["type"] = "device_status";
-    resp["device"] = device;
-    resp["state"] = !current;
-    String respBuf;
-    serializeJson(resp, respBuf);
-    sendWebSocketMessage(respBuf);
+
+    ensureDeviceInitialized(device);
+
+    bool nextDesired = !state->desired;
+    if (doc["state"].is<bool>())
+    {
+        nextDesired = doc["state"].as<bool>();
+    }
+
+    state->desired = nextDesired;
+    digitalWrite(pin, state->desired ? HIGH : LOW);
+    state->actual = (digitalRead(pin) == HIGH);
+    state->fault = (state->actual != state->desired);
+
+    Serial.printf("Set %s (pin %d) desired=%d actual=%d\n", device.c_str(), pin, state->desired, state->actual);
+
+    if (state->fault)
+    {
+        sendDeviceFaultMessage(device, state->desired, state->actual);
+    }
+    sendDeviceSyncMessage(device, state->desired, state->actual, state->fault);
 }
 
-
-void handleWifiConfig(const String &message) {
+void handleWifiConfig(const String &message)
+{
     JsonDocument doc;
 
     // Deserialize the JSON string
     DeserializationError error = deserializeJson(doc, message);
 
-    if (error) {
+    if (error)
+    {
         Serial.print("JSON parsing failed: ");
         Serial.println(error.c_str());
         return;
     }
 
     // Extract values từ JSON và kiểm tra kỹ hơn
-    const char* ssid = doc["ssid"];
-    const char* password = doc["password"];
+    const char *ssid = doc["ssid"];
+    const char *password = doc["password"];
 
     // Kiểm tra SSID kỹ lưỡng
-    if (ssid == nullptr || strlen(ssid) == 0) {
+    if (ssid == nullptr || strlen(ssid) == 0)
+    {
         Serial.println("Error: SSID is null or empty!");
         return;
     }
 
-    if (strlen(ssid) > 32) { // SSID tối đa 32 ký tự
+    if (strlen(ssid) > 32)
+    { // SSID tối đa 32 ký tự
         Serial.println("Error: SSID too long! Max 32 characters.");
         return;
     }
 
     // Kiểm tra password
-    if (password != nullptr && strlen(password) > 64) { // Password tối đa 64 ký tự
+    if (password != nullptr && strlen(password) > 64)
+    { // Password tối đa 64 ký tự
         Serial.println("Error: Password too long! Max 64 characters.");
         return;
     }
@@ -124,9 +279,14 @@ void handleWifiConfig(const String &message) {
     sendWebSocketMessage(respBuf);
 }
 
-void initWebServer() {
+void initWebServer()
+{
     // Khởi tạo mode WIFI_AP_STA để có thể vừa làm AP vừa kết nối WiFi
     InitAP();
+
+    ensureDeviceInitialized("motor");
+    ensureDeviceInitialized("fan");
+    syncAllDevices(false);
 
     if (!LittleFS.begin(true))
     {
@@ -136,11 +296,11 @@ void initWebServer() {
 
     File root = LittleFS.open("/");
     File file = root.openNextFile();
-    while (file) {
+    while (file)
+    {
         Serial.println(file.name());
         file = root.openNextFile();
     }
-
 
     ElegantOTA.begin(&server);
 
@@ -148,46 +308,53 @@ void initWebServer() {
 
     server.addHandler(&ws);
 
-
-
-
     // Định nghĩa serveStatic cho tất cả các đường dẫn tĩnh
     server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
-        
+
     // 404 cho các route không tồn tại
     server.onNotFound([](AsyncWebServerRequest *request)
-        { request->send(404, "text/plain", "Not found"); });
-
+                      { request->send(404, "text/plain", "Not found"); });
 
     server.begin();
     Serial.println("HTTP server started");
 }
 
-
-void webServerTask(void *pvParameters) {
+void webServerTask(void *pvParameters)
+{
     initWebServer();
-    while (true) {
+    while (true)
+    {
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
 
 // Task xử lý WebSocket đã ngắt kết nối và xử lý OTA
-void webSocketTask(void *pvParameters) {
-    while (true) {
+void webSocketTask(void *pvParameters)
+{
+    TickType_t lastSync = xTaskGetTickCount();
+    while (true)
+    {
         ws.cleanupClients();
         ElegantOTA.loop();
-        
+
+        if ((xTaskGetTickCount() - lastSync) >= pdMS_TO_TICKS(500))
+        {
+            syncAllDevices(true);
+            lastSync = xTaskGetTickCount();
+        }
+
         vTaskDelay(100 / portTICK_PERIOD_MS); // kiểm tra mỗi 100ms
     }
 }
 
-
-void sendWebSocketMessage(String message) {
-    ws.textAll(message); 
+void sendWebSocketMessage(String message)
+{
+    ws.textAll(message);
 }
 
-// Hàm gửi dữ liệu cảm biến lên WebSocket cho dashboard 
-void sendSensorDataToWebSocket(float temperature, float humidity) {
+// Hàm gửi dữ liệu cảm biến lên WebSocket cho dashboard
+void sendSensorDataToWebSocket(float temperature, float humidity)
+{
     JsonDocument doc;
     doc["type"] = "sensor";
     doc["temperature"] = temperature;
@@ -197,8 +364,8 @@ void sendSensorDataToWebSocket(float temperature, float humidity) {
     sendWebSocketMessage(jsonBuffer);
 }
 
-
-void InitWebServer() {
+void InitWebServer()
+{
     xTaskCreate(webServerTask, "WebServerTask", 20000, NULL, 1, NULL);
     xTaskCreate(webSocketTask, "WebSocketTask", 10000, NULL, 1, NULL);
 }
