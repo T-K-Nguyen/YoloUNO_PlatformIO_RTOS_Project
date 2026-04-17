@@ -22,6 +22,21 @@ void TaskSensor(void *pvParameters) {
             float currentTemp = DHT.getTemperature();
             float currentHum = DHT.getHumidity();
 
+            // =========================================================
+            // CHẾ ĐỘ KIỂM THỬ (MOCK TESTING) CHO TINYML
+            // =========================================================
+            
+            // TEST CASE 1: Lý tưởng -> AI Score phải < 5% (LCD: Bình thường)
+            // currentTemp = 25.0; currentHum = 50.0; 
+            
+            // TEST CASE 2: Ngạt khí -> AI Score phải > 90% (LCD: NGUY HIỂM)
+            // currentTemp = 28.0; currentHum = 92.0; 
+
+            // TEST CASE 3: Sốc nhiệt -> AI Score phải > 95% (LCD: NGUY HIỂM)
+            // currentTemp = 42.0; currentHum = 40.0; 
+
+            // =========================================================
+
             Serial.print("Humidity: ");
             Serial.print(currentHum, 1);
             Serial.print("%, Temperature: ");

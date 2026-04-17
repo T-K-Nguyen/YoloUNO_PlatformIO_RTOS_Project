@@ -83,8 +83,8 @@ void tiny_ml_task(void *pvParameters) {
                 Serial.println("%");
 
                 // 4. KẾT HỢP TINYML VỚI FSM (GHI ĐÈ TRẠNG THÁI KHẨN CẤP)
-                // Nếu AI đánh giá rủi ro > 85%, lập tức kích hoạt báo động đỏ
-                if (anomalyProbability > 0.85f) {
+                // Nếu AI đánh giá rủi ro > 65%, lập tức kích hoạt báo động đỏ
+                if (anomalyProbability > 0.65f) {
                     if (xSemaphoreTake(data->dataMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
                         data->currentLcdState = LCD_CRITICAL;
                         xSemaphoreGive(data->dataMutex);
