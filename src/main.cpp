@@ -11,6 +11,7 @@
 void setup()
 {
     Serial.begin(115200);
+    delay(5000); // Đợi Serial ổn định
     Wire.begin(GPIO_NUM_11, GPIO_NUM_12); 
 
     // 1. Cấp phát vùng nhớ cho Struct
