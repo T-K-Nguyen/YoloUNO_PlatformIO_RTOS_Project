@@ -1,5 +1,5 @@
-#ifndef __GLOBAL_H__
-#define __GLOBAL_H__
+#ifndef __SYSTEM_CONFIG_H__
+#define __SYSTEM_CONFIG_H__
 
 // Include libraries
 #include <Arduino.h>
@@ -31,14 +31,9 @@
 #define LED2_PIN 41
 #define BOOT_PIN 0
 
-// Declare global variables
+// Declare system variables
 extern String CORE_IOT_TOKEN;
 extern String CORE_IOT_SERVER;
 extern String CORE_IOT_PORT;
-
-extern String ssid;
-extern String password;
-extern String wifi_ssid;
-extern String wifi_password;
 
 #endif

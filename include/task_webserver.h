@@ -6,8 +6,11 @@
 #include <AsyncTCP.h>
 #include <ArduinoJson.h>
 #include <ElegantOTA.h>
-#include "global.h"
+#include "system_config.h"
 #include "shared_data.h"
+
+extern String wifi_ssid;
+extern String wifi_password;
 
 extern void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
 extern void parseWebSocketMessage(AsyncWebSocketClient *client, const String &message);

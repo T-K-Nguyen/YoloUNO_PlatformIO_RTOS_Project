@@ -1,7 +1,7 @@
-#ifndef __TASK_WIFI_H__
-#define __TASK_WIFI_H__
+#ifndef __SETTING_WIFI_AP_H__
+#define __SETTING_WIFI_AP_H__
 
-#include "global.h"
+#include "system_config.h"
 
 extern bool WIFI_STATE;
 extern bool WIFI_SEND;

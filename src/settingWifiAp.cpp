@@ -1,5 +1,12 @@
 #include "settingWifiAp.h"
 
+// Biến tĩnh (Static) - Chỉ dùng nội bộ trong file này, ẩn hoàn toàn với bên ngoài
+static String ssid = "esp32_myown";
+static String password = "123456789";
+
+String wifi_ssid;     // Nếu task_webserver.cpp cần ghi vào biến này, có thể không dùng static
+String wifi_password; // Hoặc tốt nhất là truyền qua hàm setWifiConfig()
+
 bool WIFI_STATE = 0;
 bool WIFI_SEND = 0;
 bool WIFI_RECONNECTING = 0;

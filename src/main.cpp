@@ -5,7 +5,7 @@
 #include "task_actuator.h"
 #include "task_lcd.h"
 #include "task_webserver.h"
-#include "global.h"
+#include "system_config.h"
 
 void setup()
 {
