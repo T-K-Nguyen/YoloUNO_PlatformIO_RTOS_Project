@@ -53,7 +53,7 @@ void setup()
         xTaskCreate(TaskLCD, "LCD_Task", 4096, (void *)sharedData, 2, NULL);
     }
 
-    InitWebServer();
+    InitWebServer((void *)sharedData);
 }
 
 void loop()

@@ -1,4 +1,3 @@
-
 #ifndef __TASK_WEBSERVER_H__
 #define __TASK_WEBSERVER_H__
 
@@ -7,10 +6,8 @@
 #include <AsyncTCP.h>
 #include <ArduinoJson.h>
 #include <ElegantOTA.h>
-#include <global.h>
-
-
-struct Sensor;  // Forward declaration
+#include "global.h"
+#include "shared_data.h"
 
 extern void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
 extern void parseWebSocketMessage(AsyncWebSocketClient *client, const String &message);
@@ -20,6 +17,6 @@ extern void handleWifiConfig(const String &message);
 
 extern void sendWebSocketMessage(String message);
 
-extern void InitWebServer();
+extern void InitWebServer(void *pvParameters); 
 
 #endif

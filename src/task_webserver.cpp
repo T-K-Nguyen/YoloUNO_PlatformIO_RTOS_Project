@@ -347,7 +347,12 @@ void webServerTask(void *pvParameters)
 // Task xử lý WebSocket đã ngắt kết nối và xử lý OTA
 void webSocketTask(void *pvParameters)
 {
+    // Ép kiểu pvParameters về cấu trúc dùng chung của hệ thống
+    SensorData *data = (SensorData *)pvParameters;
+    
     TickType_t lastSync = xTaskGetTickCount();
+    TickType_t lastWebUpdate = xTaskGetTickCount(); // Bộ đếm gửi dữ liệu lên Web
+
     while (true)
     {
         ws.cleanupClients();
@@ -358,6 +363,36 @@ void webSocketTask(void *pvParameters)
             syncAllDevices(true);
             lastSync = xTaskGetTickCount();
         }
+
+        // =========================================================
+        // KIẾN TRÚC MỚI: ĐỌC DỮ LIỆU CẢM BIẾN AN TOÀN QUA MUTEX
+        // =========================================================
+        if (data != NULL && (xTaskGetTickCount() - lastWebUpdate) >= pdMS_TO_TICKS(2000)) 
+        {
+            float temp = 0.0f;
+            float hum = 0.0f;
+            bool newDataAvailable = false;
+
+            // Xin cấp quyền Mutex tối đa 100 Ticks để không chặn luồng Web quá lâu
+            if (xSemaphoreTake(data->dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) 
+            {
+                temp = data->temperature;
+                hum = data->humidity;
+                newDataAvailable = true;
+                
+                // Nhả Mutex ngay lập tức sau khi sao chép xong
+                xSemaphoreGive(data->dataMutex); 
+            }
+
+            // Chỉ gửi WebSocket khi lấy được dữ liệu thành công
+            if (newDataAvailable) 
+            {
+                sendSensorDataToWebSocket(temp, hum);
+            }
+            
+            lastWebUpdate = xTaskGetTickCount();
+        }
+        // =========================================================
 
         vTaskDelay(100 / portTICK_PERIOD_MS); // kiểm tra mỗi 100ms
     }
@@ -380,8 +415,9 @@ void sendSensorDataToWebSocket(float temperature, float humidity)
     sendWebSocketMessage(jsonBuffer);
 }
 
-void InitWebServer()
+// SỬA HÀM NÀY: Truyền pvParameters vào cho xTaskCreate
+void InitWebServer(void *pvParameters)
 {
-    xTaskCreate(webServerTask, "WebServerTask", 20000, NULL, 1, NULL);
-    xTaskCreate(webSocketTask, "WebSocketTask", 10000, NULL, 1, NULL);
+    xTaskCreate(webServerTask, "WebServerTask", 20000, pvParameters, 1, NULL);
+    xTaskCreate(webSocketTask, "WebSocketTask", 10000, pvParameters, 1, NULL);
 }
