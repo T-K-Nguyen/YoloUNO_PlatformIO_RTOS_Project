@@ -209,7 +209,7 @@ void webServerTask(void *pvParameters)
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
-// Task xử lý WebSocket đã ngắt kết nối
+// Task chuyên gửi dữ liệu cảm biến lên WebSocket, đảm bảo không bị chặn bởi việc đọc cảm biến
 void webSocketTask(void *pvParameters)
 {
     // Ép kiểu pvParameters về cấu trúc dùng chung của hệ thống
