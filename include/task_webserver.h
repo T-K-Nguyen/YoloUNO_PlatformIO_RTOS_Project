@@ -8,7 +8,8 @@
 #include <ElegantOTA.h>
 #include "system_config.h"
 #include "shared_data.h"
-
+#include "device_manager.h"
+#include "settingWifiAp.h"
 extern String wifi_ssid;
 extern String wifi_password;
 

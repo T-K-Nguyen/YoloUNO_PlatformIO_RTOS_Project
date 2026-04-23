@@ -8,7 +8,6 @@ String wifi_ssid;     // Nếu task_webserver.cpp cần ghi vào biến này, c�
 String wifi_password; // Hoặc tốt nhất là truyền qua hàm setWifiConfig()
 
 bool WIFI_STATE = 0;
-bool WIFI_SEND = 0;
 bool WIFI_RECONNECTING = 0;
 
 void InitAP()
@@ -40,7 +39,6 @@ void InitWifi()
     if (wifi_ssid.length() == 0 || wifi_ssid.length() > 32)
     {
         Serial.println("Invalid SSID, cannot connect to WiFi");
-        WIFI_SEND = 0;
         return;
     }
 
@@ -72,7 +70,6 @@ void InitWifi()
         Serial.println("\nFailed to connect to WiFi!");
     }
 
-    WIFI_SEND = 0;
     WIFI_RECONNECTING = 0;
 }
 

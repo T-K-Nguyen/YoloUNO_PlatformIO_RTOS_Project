@@ -8,7 +8,7 @@ let fan2Status = null;
 let fan1Icon = null;
 let fan2Icon = null;
 
-function applyDeviceUI(device, state, fault) {
+function applyDeviceUI(device, state) {
     const isFan1 = device === 'fan1';
     const btn = isFan1 ? fan1Btn : fan2Btn;
     const statusEl = isFan1 ? fan1Status : fan2Status;
@@ -17,13 +17,6 @@ function applyDeviceUI(device, state, fault) {
     if (!btn || !statusEl || !iconEl) return;
 
     btn.checked = !!state;
-
-    if (fault) {
-        statusEl.textContent = 'Lỗi kết nối / lệch trạng thái';
-        statusEl.className = 'mt-3 fw-semibold text-danger';
-        iconEl.classList.remove('fa-spin');
-        return;
-    }
 
     statusEl.textContent = state ? 'Đang bật' : 'Đang tắt';
     statusEl.className = isFan1
@@ -69,15 +62,11 @@ function connectWebSocket() {
             const msg = JSON.parse(event.data);
 
             if (msg.type === 'device_sync') {
-                applyDeviceUI(msg.device, !!msg.actual, !!msg.fault);
+                applyDeviceUI(msg.device, !!msg.actual);
             }
 
             if (msg.type === 'device_status') {
-                applyDeviceUI(msg.device, !!msg.state, false);
-            }
-
-            if (msg.type === 'device_fault') {
-                applyDeviceUI(msg.device, !!msg.actual, true);
+                applyDeviceUI(msg.device, !!msg.state);
             }
         } catch (e) {
             console.warn('Invalid WS message', e);

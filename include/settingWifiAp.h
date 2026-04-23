@@ -4,7 +4,6 @@
 #include "system_config.h"
 
 extern bool WIFI_STATE;
-extern bool WIFI_SEND;
 
 
 
