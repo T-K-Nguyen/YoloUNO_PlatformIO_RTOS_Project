@@ -4,7 +4,7 @@ AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
 bool isAPMode = true;
-
+// Hàm gửi JSON qua WebSocket
 static void sendJSON(JsonDocument &doc, AsyncWebSocketClient *client = nullptr)
 {
     String payload;
@@ -15,7 +15,7 @@ static void sendJSON(JsonDocument &doc, AsyncWebSocketClient *client = nullptr)
     else
         ws.textAll(payload);
 }
-
+// Hàm gửi trạng thái thiết bị qua WebSocket
 static void sendDeviceState(Device &device, AsyncWebSocketClient *client = nullptr)
 {
     // Payload thong nhat cho dong bo ban dau va cap nhat trang thai.
@@ -28,7 +28,7 @@ static void sendDeviceState(Device &device, AsyncWebSocketClient *client = nullp
     doc["status"] = device.status;
     sendJSON(doc, client);
 }
-
+// Hàm xử lý tin nhắn WebSocket, phân tích JSON và thực hiện hành động tương ứng
 static void handleMessage(const String &message)
 {
     JsonDocument doc;
@@ -50,7 +50,7 @@ static void handleMessage(const String &message)
         handleWifiConfig(message);
     }
 }
-
+// Hàm xử lý sự kiện WebSocket (kết nối, ngắt kết nối, nhận dữ liệu)
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
 {
     if (type == WS_EVT_CONNECT)
@@ -79,16 +79,12 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
         {
             message += (char)data[i];
         }
-        parseWebSocketMessage(client, message); // Gọi hàm xử lý tin nhắn
+        handleMessage(message); // Gọi hàm xử lý tin nhắn
         Serial.printf("WebSocket client #%u sent data: %s\n", client->id(), message.c_str());
     }
 }
 
-void parseWebSocketMessage(AsyncWebSocketClient *client, const String &message)
-{
-    handleMessage(message);
-}
-
+// Hàm xử lý yêu cầu toggle thiết bị, cập nhật trạng thái và gửi phản hồi qua WebSocket
 void handleToggleDevice(const String &message)
 {
     JsonDocument doc;
@@ -109,17 +105,14 @@ void handleToggleDevice(const String &message)
     }
 
     bool nextDesired = !device->desired;
-    if (doc["state"].is<bool>())
-    {
-        nextDesired = doc["state"].as<bool>();
-    }
+
 
     deviceManagerApplyDesiredState(*device, nextDesired);
 
     Serial.printf("Set %s (pin %d) desired=%d actual=%d\n", device->name, device->pin, device->desired, device->actual);
     sendDeviceState(*device);
 }
-
+// Hàm xử lý cấu hình WiFi, kết nối và gửi phản hồi qua WebSocket
 void handleWifiConfig(const String &message)
 {
     JsonDocument doc;
@@ -155,6 +148,7 @@ void handleWifiConfig(const String &message)
     sendJSON(resp);
 }
 
+// Hàm khởi tạo WebServer, thiết lập các route và WebSocket
 void initWebServer()
 {
     // init AP và thiết bị
@@ -194,6 +188,7 @@ void initWebServer()
         {
             request->send(LittleFS, "/dashboard_sta.html", "text/html");
         } });
+
     // Cấu hình để phục vụ các file tĩnh từ LittleFS, với index.html là trang mặc định.
     server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
     // Xử lý các yêu cầu không khớp với handler nào, trả về 404.
@@ -214,7 +209,7 @@ void webServerTask(void *pvParameters)
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
-// Task xử lý WebSocket đã ngắt kết nối và xử lý OTA
+// Task xử lý WebSocket đã ngắt kết nối
 void webSocketTask(void *pvParameters)
 {
     // Ép kiểu pvParameters về cấu trúc dùng chung của hệ thống
