@@ -7,17 +7,16 @@ enum DeviceStatus
 {
     DEVICE_OFF = 0,
     DEVICE_ON = 1,
-    DEVICE_ERROR = 2,
 };
 
 struct Device
 {
     const char *name;
-    uint8_t pin;
-    bool desired;
-    bool actual;
-    DeviceStatus status;
-    bool initialized;
+    uint8_t pin;         // Chân GPIO điều khiển thiết bị
+    bool desired;        // Trạng thái mong muốn (do người dùng yêu cầu)
+    bool actual;         // Trạng thái thực tế (đọc từ GPIO)
+    DeviceStatus status; // Trạng thái tổng hợp (ON/OFF/ERROR)
+    bool initialized;    // Đánh dấu đã khởi tạo chân GPIO hay chưa
 };
 
 void deviceManagerInitAll();

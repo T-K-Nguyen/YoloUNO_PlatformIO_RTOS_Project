@@ -22,7 +22,7 @@ static void initDevice(Device &device)
     device.status = DEVICE_OFF;
     device.initialized = true;
 }
-
+// Hàm khởi tạo tất cả thiết bị
 void deviceManagerInitAll()
 {
     for (size_t i = 0; i < DEVICE_COUNT; ++i)
@@ -30,7 +30,7 @@ void deviceManagerInitAll()
         initDevice(devices[i]);
     }
 }
-
+// Hàm lấy con trỏ đến thiết bị theo tên, trả về nullptr nếu không tìm thấy
 Device *deviceManagerGet(const String &name)
 {
     for (size_t i = 0; i < DEVICE_COUNT; ++i)
@@ -43,7 +43,7 @@ Device *deviceManagerGet(const String &name)
     }
     return nullptr;
 }
-
+// Hàm lấy con trỏ đến thiết bị theo chỉ số, trả về nullptr nếu chỉ số không hợp lệ
 Device *deviceManagerGetAt(size_t index)
 {
     if (index >= DEVICE_COUNT)
@@ -57,7 +57,7 @@ size_t deviceManagerCount()
 {
     return DEVICE_COUNT;
 }
-
+// Hàm áp dụng trạng thái mong muốn cho thiết bị, cập nhật trạng thái thực tế và tổng hợp
 void deviceManagerApplyDesiredState(Device &device, bool desiredState)
 {
     device.desired = desiredState;

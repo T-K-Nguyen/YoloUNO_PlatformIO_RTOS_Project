@@ -254,10 +254,6 @@ void webSocketTask(void *pvParameters)
     }
 }
 
-void sendWebSocketMessage(String message)
-{
-    ws.textAll(message);
-}
 // Hàm gửi dữ liệu cảm biến lên WebSocket cho dashboard
 void sendSensorDataToWebSocket(float temperature, float humidity)
 {

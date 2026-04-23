@@ -65,9 +65,6 @@ function connectWebSocket() {
                 applyDeviceUI(msg.device, !!msg.actual);
             }
 
-            if (msg.type === 'device_status') {
-                applyDeviceUI(msg.device, !!msg.state);
-            }
         } catch (e) {
             console.warn('Invalid WS message', e);
         }
