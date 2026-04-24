@@ -14,5 +14,8 @@ bool CORE_IOT_sendata(String mode, String feed, String data);
 void CORE_IOT_reconnect();
 bool CORE_IOT_isConnected();
 void CORE_IOT_setSensorData(SensorData* sensor_data);
+void CORE_IOT_reconnectLocalBroker();
+bool CORE_IOT_publishLocalTelemetry(float temperature, float humidity, float longitude, float latitude);
+bool CORE_IOT_publishLocalAttributes(const String &localIp, bool wifiConnected, int32_t wifiRssi, const String &coreiotServer);
 
 #endif

@@ -45,6 +45,8 @@ extern String WIFI_PASS;
 extern String CORE_IOT_TOKEN;
 extern String CORE_IOT_SERVER;
 extern String CORE_IOT_PORT;
+extern String LOCAL_MQTT_BROKER_IP;
+extern String LOCAL_MQTT_BROKER_PORT;
 
 extern String ssid;
 extern String password;

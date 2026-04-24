@@ -5,16 +5,20 @@ document.getElementById('wifi-config-form').addEventListener('submit', async fun
     e.preventDefault();
     const ssid = document.getElementById('ssid').value;
     const password = document.getElementById('password').value;
+    const localMqttIp = document.getElementById('local-mqtt-ip').value;
+    const localMqttPort = document.getElementById('local-mqtt-port').value || '1883';
 
-    if (!ssid.trim() || !password.trim()) {
-        alert("Vui lòng điền đầy đủ thông tin WiFi!");
+    if (!ssid.trim() || !password.trim() || !localMqttIp.trim()) {
+        alert("Vui lòng điền SSID, password và Local MQTT Broker IP!");
         return;
     }
     alert(`Đã gửi tín hiệu kết nối với WIFI ${ssid}`);  
     ws.send(JSON.stringify({
         action: "wifi",
         ssid: ssid,
-        password: password
+        password: password,
+        local_mqtt_ip: localMqttIp,
+        local_mqtt_port: localMqttPort
     }));
 });
 

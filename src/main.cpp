@@ -10,7 +10,7 @@
 #include "task_check_info.h"
 #include "settingWifiAp.h"
 #include "task_toogle_boot.h"
-// #include "tinyml.h"
+
 
 void setup() {
     Serial.begin(115200);
@@ -70,7 +70,7 @@ void setup() {
         xTaskCreate(TaskLEDControl, "LED_Task", 2048, (void*)sharedData, 2, NULL);
 
         // Tạo Task 2: NeoPixel
-        xTaskCreate(neo_blinky, "Neo_Task", 2048, (void*)sharedData, 2, NULL);
+        // xTaskCreate(neo_blinky, "Neo_Task", 2048, (void*)sharedData, 2, NULL);
     }
 
     // if (sharedData->lcdUpdateSemaphore != NULL) {
@@ -79,7 +79,7 @@ void setup() {
 
     InitWebServer();
     xTaskCreate(coreiot_task, "CoreIOT_Task", 8192, (void*)sharedData, 2, NULL);
-    // xTaskCreate(tiny_ml_task, "TinyML_Task", 6144, (void*)sharedData, 2, NULL);
+    // xTaskCreate(tiny_ml_task, "Tiny ML Task" ,2048  ,NULL  ,2 , NULL);
     xTaskCreate(Task_Toogle_BOOT, "Task_Toogle_BOOT", 4096, NULL, 2, NULL);
 }
 

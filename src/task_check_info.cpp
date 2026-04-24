@@ -23,6 +23,8 @@ void Load_info_File()
       CORE_IOT_TOKEN = doc["CORE_IOT_TOKEN"] | CORE_IOT_TOKEN;
       CORE_IOT_SERVER = doc["CORE_IOT_SERVER"] | CORE_IOT_SERVER;
       CORE_IOT_PORT = doc["CORE_IOT_PORT"] | CORE_IOT_PORT;
+      LOCAL_MQTT_BROKER_IP = doc["LOCAL_MQTT_BROKER_IP"] | LOCAL_MQTT_BROKER_IP;
+      LOCAL_MQTT_BROKER_PORT = doc["LOCAL_MQTT_BROKER_PORT"] | LOCAL_MQTT_BROKER_PORT;
       xSemaphoreGive(xMutexCloudConfig);
     }
 
@@ -51,7 +53,7 @@ void Delete_info_File()
   ESP.restart();
 }
 
-bool Save_info_File(String wifi_ssid, String wifi_pass, String CORE_IOT_TOKEN, String CORE_IOT_SERVER, String CORE_IOT_PORT, bool restartDevice)
+bool Save_info_File(String wifi_ssid, String wifi_pass, String CORE_IOT_TOKEN, String CORE_IOT_SERVER, String CORE_IOT_PORT, String local_mqtt_broker_ip, String local_mqtt_broker_port, bool restartDevice)
 {
   if (xMutexCloudConfig != NULL &&
       xSemaphoreTake(xMutexCloudConfig, pdMS_TO_TICKS(100)) == pdTRUE)
@@ -61,6 +63,8 @@ bool Save_info_File(String wifi_ssid, String wifi_pass, String CORE_IOT_TOKEN, S
     ::CORE_IOT_TOKEN = CORE_IOT_TOKEN;
     ::CORE_IOT_SERVER = CORE_IOT_SERVER;
     ::CORE_IOT_PORT = CORE_IOT_PORT;
+    ::LOCAL_MQTT_BROKER_IP = local_mqtt_broker_ip;
+    ::LOCAL_MQTT_BROKER_PORT = local_mqtt_broker_port;
     xSemaphoreGive(xMutexCloudConfig);
   }
 
@@ -83,6 +87,8 @@ bool Save_info_File(String wifi_ssid, String wifi_pass, String CORE_IOT_TOKEN, S
   doc["CORE_IOT_TOKEN"] = CORE_IOT_TOKEN;
   doc["CORE_IOT_SERVER"] = CORE_IOT_SERVER;
   doc["CORE_IOT_PORT"] = CORE_IOT_PORT;
+  doc["LOCAL_MQTT_BROKER_IP"] = local_mqtt_broker_ip;
+  doc["LOCAL_MQTT_BROKER_PORT"] = local_mqtt_broker_port;
 
   File configFile = LittleFS.open("/info.dat", "w");
   if (configFile)

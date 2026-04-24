@@ -8,6 +8,8 @@ String WIFI_PASS;
 String CORE_IOT_TOKEN = "68PBxgP1uYZWp1Wk4zXE";
 String CORE_IOT_SERVER = "app.coreiot.io";
 String CORE_IOT_PORT = "1883";
+String LOCAL_MQTT_BROKER_IP = "";
+String LOCAL_MQTT_BROKER_PORT = "1883";
 
 
 String ssid = "esp32_myown";

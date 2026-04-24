@@ -105,6 +105,16 @@ void InitWifi() {
         Serial.println("\nConnected to WiFi!");
         Serial.print("IP Address: ");
         Serial.println(WiFi.localIP());
+
+        // After STA is connected, disable config AP to reduce radio load and
+        // avoid the expectation that esp32_myown can route internet traffic.
+        // if (WiFi.softAPgetStationNum() > 0) {
+        //     Serial.println("[WIFI] STA connected. SoftAP clients detected; disabling SoftAP mode.");
+        // }
+        // WiFi.softAPdisconnect(false);
+        // WiFi.mode(WIFI_STA);
+        // Serial.println("[WIFI] SoftAP disabled. Use STA IP to access web UI.");
+
         if (xSystemEventGroup != NULL) {
             xEventGroupSetBits(xSystemEventGroup, WIFI_CONNECTED_BIT);
         }

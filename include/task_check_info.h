@@ -10,6 +10,6 @@
 bool check_info_File(bool check);
 void Load_info_File();
 void Delete_info_File();
-bool Save_info_File(String WIFI_SSID, String WIFI_PASS, String CORE_IOT_TOKEN, String CORE_IOT_SERVER, String CORE_IOT_PORT, bool restartDevice = true);
+bool Save_info_File(String WIFI_SSID, String WIFI_PASS, String CORE_IOT_TOKEN, String CORE_IOT_SERVER, String CORE_IOT_PORT, String LOCAL_MQTT_BROKER_IP = "", String LOCAL_MQTT_BROKER_PORT = "1883", bool restartDevice = true);
 
 #endif
