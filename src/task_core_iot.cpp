@@ -20,6 +20,11 @@ static bool localBrokerConfigured = false;
 static bool localBrokerWaitLogged = false;
 static String localDeviceId;
 static bool localCommandSubscribed = false;
+static TickType_t nextCloudReconnectTick = 0;
+static String lastCloudServer;
+static String lastCloudToken;
+static int lastCloudPort = 0;
+static bool cloudSubscriptionsReady = false;
 
 // --- GLOBAL POINTER để SensorData có thể dùng được trong RPC callback ---
 static SensorData* gSensorData = NULL;
@@ -37,6 +42,7 @@ constexpr uint16_t BLINKING_INTERVAL_MS_MAX = 60000U;
 volatile uint16_t blinkingInterval = 1000U;
 
 constexpr int16_t telemetrySendInterval = 10000U;
+constexpr TickType_t CLOUD_RECONNECT_BACKOFF = pdMS_TO_TICKS(3000);
 
 constexpr std::array<const char *, 1U> SHARED_ATTRIBUTES_LIST = {
     LED_STATE_ATTR,
@@ -398,6 +404,26 @@ void CORE_IOT_reconnect()
         return;
     }
 
+    const bool cloudConfigChanged =
+        (server != lastCloudServer) ||
+        (token != lastCloudToken) ||
+        (port != lastCloudPort);
+
+    if (cloudConfigChanged)
+    {
+        if (tb.connected())
+        {
+            tb.disconnect();
+        }
+        tb.Cleanup_Subscriptions();
+        cloudSubscriptionsReady = false;
+        lastCloudServer = server;
+        lastCloudToken = token;
+        lastCloudPort = port;
+        nextCloudReconnectTick = 0;
+        Serial.println("[COREIOT] Cloud config changed, reset connection/subscriptions.");
+    }
+
     // // --- KIỂM TRA NẾUOKEN ĐÃ THAY ĐỔI -> FORCE DISCONNECT ---
     // if (lastCachedToken != token)
     // {
@@ -414,6 +440,12 @@ void CORE_IOT_reconnect()
 
     if (!tb.connected())
     {
+        const TickType_t now = xTaskGetTickCount();
+        if (nextCloudReconnectTick != 0 && now < nextCloudReconnectTick)
+        {
+            return;
+        }
+
         Serial.print("[COREIOT] Connecting to ");
         Serial.print(server);
         Serial.print(":");
@@ -424,35 +456,52 @@ void CORE_IOT_reconnect()
         if (!tb.connect(server.c_str(), token.c_str(), port))
         {
             Serial.println("[COREIOT] ThingsBoard connect failed.");
+            nextCloudReconnectTick = now + CLOUD_RECONNECT_BACKOFF;
             return;
         }
 
         Serial.println("[COREIOT] ThingsBoard connected.");
+        nextCloudReconnectTick = 0;
 
         tb.sendAttributeData("macAddress", WiFi.macAddress().c_str());
 
-        Serial.println("Subscribing for RPC...");
-        if (!tb.RPC_Subscribe(callbacks.cbegin(), callbacks.cend()))
+        if (!cloudSubscriptionsReady)
         {
-            Serial.println("[COREIOT] Failed to subscribe for RPC");
-            return;
-        }
-        Serial.println("[COREIOT] RPC subscribe success");
+            // Ensure partial previous attempts do not accumulate duplicate subscriptions.
+            tb.Cleanup_Subscriptions();
 
-        if (!tb.Shared_Attributes_Subscribe(attributes_callback))
-        {
-            Serial.println("[COREIOT] Failed to subscribe for shared attribute updates");
-            return;
+            Serial.println("Subscribing for RPC...");
+            if (!tb.RPC_Subscribe(callbacks.cbegin(), callbacks.cend()))
+            {
+                Serial.println("[COREIOT] Failed to subscribe for RPC");
+                tb.disconnect();
+                nextCloudReconnectTick = now + CLOUD_RECONNECT_BACKOFF;
+                return;
+            }
+            Serial.println("[COREIOT] RPC subscribe success");
+
+            if (!tb.Shared_Attributes_Subscribe(attributes_callback))
+            {
+                Serial.println("[COREIOT] Failed to subscribe for shared attribute updates");
+                tb.disconnect();
+                nextCloudReconnectTick = now + CLOUD_RECONNECT_BACKOFF;
+                return;
+            }
+
+            Serial.println("[COREIOT] Shared attributes subscribe success");
+
+            if (!tb.Shared_Attributes_Request(attribute_shared_request_callback))
+            {
+                Serial.println("[COREIOT] Failed to request shared attributes");
+                tb.disconnect();
+                nextCloudReconnectTick = now + CLOUD_RECONNECT_BACKOFF;
+                return;
+            }
+            Serial.println("[COREIOT] Shared attributes request success");
+
+            cloudSubscriptionsReady = true;
         }
 
-        Serial.println("[COREIOT] Shared attributes subscribe success");
-
-        if (!tb.Shared_Attributes_Request(attribute_shared_request_callback))
-        {
-            Serial.println("[COREIOT] Failed to request shared attributes");
-            return;
-        }
-        Serial.println("[COREIOT] Shared attributes request success");
         tb.sendAttributeData("localIp", WiFi.localIP().toString().c_str());
     }
 
