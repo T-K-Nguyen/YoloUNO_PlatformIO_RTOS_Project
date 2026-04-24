@@ -415,13 +415,12 @@ void CORE_IOT_reconnect()
         {
             tb.disconnect();
         }
-        tb.Cleanup_Subscriptions();
         cloudSubscriptionsReady = false;
         lastCloudServer = server;
         lastCloudToken = token;
         lastCloudPort = port;
         nextCloudReconnectTick = 0;
-        Serial.println("[COREIOT] Cloud config changed, reset connection/subscriptions.");
+        Serial.println("[COREIOT] Cloud config changed, reset connection state.");
     }
 
     // // --- KIỂM TRA NẾUOKEN ĐÃ THAY ĐỔI -> FORCE DISCONNECT ---
@@ -446,6 +445,8 @@ void CORE_IOT_reconnect()
             return;
         }
 
+        const String cloudClientId = "tb-" + buildLocalDeviceId();
+
         Serial.print("[COREIOT] Connecting to ");
         Serial.print(server);
         Serial.print(":");
@@ -453,7 +454,7 @@ void CORE_IOT_reconnect()
         Serial.print(" token=");
         Serial.println(token.substring(0, min((int)token.length(), 8)) + "...");
 
-        if (!tb.connect(server.c_str(), token.c_str(), port))
+        if (!tb.connect(server.c_str(), token.c_str(), port, cloudClientId.c_str()))
         {
             Serial.println("[COREIOT] ThingsBoard connect failed.");
             nextCloudReconnectTick = now + CLOUD_RECONNECT_BACKOFF;
@@ -467,9 +468,6 @@ void CORE_IOT_reconnect()
 
         if (!cloudSubscriptionsReady)
         {
-            // Ensure partial previous attempts do not accumulate duplicate subscriptions.
-            tb.Cleanup_Subscriptions();
-
             Serial.println("Subscribing for RPC...");
             if (!tb.RPC_Subscribe(callbacks.cbegin(), callbacks.cend()))
             {
