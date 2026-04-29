@@ -34,16 +34,6 @@
 #define WIFI_CONNECTED_BIT BIT0
 
 // Declare system variables
-extern String CORE_IOT_TOKEN;
-extern String CORE_IOT_SERVER;
-extern String CORE_IOT_PORT;
-extern String LOCAL_MQTT_BROKER_IP;
-extern String LOCAL_MQTT_BROKER_PORT;
-
-extern String ssid;
-extern String password;
-extern String wifi_ssid;
-extern String wifi_password;
 
 extern bool pump_state;
 extern bool fan_state;
@@ -56,6 +46,8 @@ extern EventGroupHandle_t xSystemEventGroup;
 extern SemaphoreHandle_t xMutexCloudConfig;
 extern SemaphoreHandle_t xMutexWifiConfig;
 
+String WIFI_SSID;
+String WIFI_PASS;
 String CORE_IOT_TOKEN = "68PBxgP1uYZWp1Wk4zXE";
 String CORE_IOT_SERVER = "app.coreiot.io";
 String CORE_IOT_PORT = "1883";

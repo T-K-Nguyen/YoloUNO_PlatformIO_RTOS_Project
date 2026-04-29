@@ -11,6 +11,7 @@ volatile bool wifiConnectionPending = false;
 unsigned long wifiConnectionStartTime = 0;
 TaskHandle_t wifiTaskHandle = NULL;
 
+
 static const int FAN1_PIN = 38;
 static const int FAN2_PIN = 8;
 
@@ -174,7 +175,7 @@ void parseWebSocketMessage(AsyncWebSocketClient *client, const String &message)
     if (message.startsWith("{\"action\":\"wifi\""))
     {
         // Xử lý cấu hình WiFi
-        handleWifiConfig(message);
+        handleWifiConfig(client, message);
     } else if (message.startsWith("{\"action\":\"toggle_device")) {
         // Xử lý toggle motor/fan
         handleToggleDevice(message);
@@ -223,7 +224,7 @@ void handleToggleDevice(const String &message)
     sendDeviceSyncMessage(device, state->desired, state->actual, state->fault);
 }
 
-void handleWifiConfig(const String &message) {
+void handleWifiConfig(AsyncWebSocketClient *client, const String &message) {
     JsonDocument doc;
 
     // Deserialize the JSON string
@@ -237,8 +238,27 @@ void handleWifiConfig(const String &message) {
     }
 
     // Extract values từ JSON và kiểm tra kỹ hơn
+    // Extract values từ JSON và kiểm tra kỹ hơn
     const char* ssid = doc["ssid"];
     const char* password = doc["password"];
+    const char* coreiotToken = doc["coreiot_token"];
+    const char* coreiotServer = doc["coreiot_server"];
+    const char* coreiotPort = doc["coreiot_port"];
+    const char* localMqttBrokerIp = doc["local_mqtt_ip"];
+    if (localMqttBrokerIp == nullptr || strlen(localMqttBrokerIp) == 0) {
+        localMqttBrokerIp = doc["localMqttIp"];
+    }
+    if (localMqttBrokerIp == nullptr || strlen(localMqttBrokerIp) == 0) {
+        localMqttBrokerIp = doc["mqtt_ip"];
+    }
+
+    const char* localMqttBrokerPort = doc["local_mqtt_port"];
+    if (localMqttBrokerPort == nullptr || strlen(localMqttBrokerPort) == 0) {
+        localMqttBrokerPort = doc["localMqttPort"];
+    }
+    if (localMqttBrokerPort == nullptr || strlen(localMqttBrokerPort) == 0) {
+        localMqttBrokerPort = doc["mqtt_port"];
+    }
 
     // Kiểm tra SSID kỹ lưỡng
     if (ssid == nullptr || strlen(ssid) == 0)

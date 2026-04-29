@@ -6,7 +6,7 @@
 #include <Arduino_MQTT_Client.h>
 #include <HTTPClient.h>
 #include "task_check_info.h"
-#include "global.h"
+#include "system_config.h"
 #include "shared_data.h"
 
 
