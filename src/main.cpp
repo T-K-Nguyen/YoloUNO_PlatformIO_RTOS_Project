@@ -11,11 +11,40 @@
 #include "settingWifiAp.h"
 #include "task_toogle_boot.h"
 #include "system_config.h"
+boolean isWifiConnected = false;
+
+// Khởi tạo các biến cấu hình Cloud/WiFi
+String WIFI_SSID = "";
+String WIFI_PASS = "";
+String CORE_IOT_TOKEN = "68PBxgP1uYZWp1Wk4zXE";
+String CORE_IOT_SERVER = "app.coreiot.io";
+String CORE_IOT_PORT = "1883";
+String LOCAL_MQTT_BROKER_IP = "";
+String LOCAL_MQTT_BROKER_PORT = "1883";
+
+// Khởi tạo các Handle của FreeRTOS bằng NULL
+EventGroupHandle_t xSystemEventGroup = NULL;
+SemaphoreHandle_t xMutexCloudConfig = NULL;
+SemaphoreHandle_t xMutexWifiConfig = NULL;
 
 void setup()
 {
     Serial.begin(115200);
     delay(5000); // Đợi Serial ổn định
+
+
+    // 1. CẤP PHÁT BỘ NHỚ CHO CÁC ĐỐI TƯỢNG ĐỒNG BỘ FREERTOS
+    xSystemEventGroup = xEventGroupCreate();
+    xMutexCloudConfig = xSemaphoreCreateMutex();
+    xMutexWifiConfig = xSemaphoreCreateMutex();
+
+    // 2. Kiểm tra an toàn: Nếu cấp phát thất bại thì dừng hệ thống
+    if (xSystemEventGroup == NULL || xMutexCloudConfig == NULL || xMutexWifiConfig == NULL) {
+        Serial.println("LỖI NGHIÊM TRỌNG: Không thể cấp phát tài nguyên FreeRTOS!");
+        while(1); // Dừng hệ thống tại đây
+    }
+
+
     Wire.begin(GPIO_NUM_11, GPIO_NUM_12); 
 
     const bool hasSavedInfo = check_info_File(false);
