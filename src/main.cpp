@@ -4,20 +4,19 @@
 #include "task_sensor.h"
 #include "task_actuator.h"
 #include "task_lcd.h"
+#include "tinyml.h"
 #include "task_webserver.h"
-#include "global.h"
 #include "coreiot.h"
 #include "task_check_info.h"
 #include "settingWifiAp.h"
 #include "task_toogle_boot.h"
+#include "system_config.h"
 
-
-void setup() {
+void setup()
+{
     Serial.begin(115200);
-    delay(2000);
-    Serial.println("Khoi tao he thong RTOS...");
-
-    Wire.begin(GPIO_NUM_11, GPIO_NUM_12);
+    delay(5000); // Đợi Serial ổn định
+    Wire.begin(GPIO_NUM_11, GPIO_NUM_12); 
 
     const bool hasSavedInfo = check_info_File(false);
     bool hasWifiCredential = false;
@@ -34,13 +33,13 @@ void setup() {
     }
 
     // 1. Cấp phát vùng nhớ cho Struct
-    SensorData* sharedData = new SensorData();
+    SensorData *sharedData = new SensorData();
     sharedData->temperature = 0.0f;
     sharedData->humidity = 0.0f;
     sharedData->lastSensorUpdateTick = xTaskGetTickCount();
     sharedData->currentLcdState = LCD_NORMAL;
-
-    // --- THÊM: KHỞI TẠO NGƯỠNG MẶC ĐỊNH ---
+    
+    // Ngưỡng cấu hình động
     sharedData->tempWarning = 25.0f;
     sharedData->tempCritical = 35.0f;
     sharedData->humDry = 40.0f;
@@ -54,36 +53,34 @@ void setup() {
     sharedData->lastManualLedTick = 0;
     // ---
 
-    // 2. Khởi tạo các Semaphore và Mutex
     sharedData->dataMutex = xSemaphoreCreateMutex();
-    sharedData->i2cMutex = xSemaphoreCreateMutex(); 
+    sharedData->i2cMutex = xSemaphoreCreateMutex();
     sharedData->tempWarningSemaphore = xSemaphoreCreateBinary();
     sharedData->lcdUpdateSemaphore = xSemaphoreCreateBinary();
     // sharedData->tinymlInputQueue = xQueueCreate(1, sizeof(TinyMLInputSample));
 
-    // 3. Tạo Task 
     if (sharedData->dataMutex != NULL && sharedData->i2cMutex != NULL) {
-        // Tạo Task Cảm biến
-        xTaskCreate(TaskSensor, "Sensor_Task", 4096, (void*)sharedData, 3, NULL);
+        xTaskCreate(Task_Toogle_BOOT, "Task_Toogle_BOOT", 4096, NULL, 2, NULL);
+        // Task Sensor (Ưu tiên cao nhất để không lỡ nhịp dữ liệu)
+        xTaskCreate(TaskSensor, "Sensor_Task", 4096, (void*)sharedData, 4, NULL);
         
-        // Tạo Task 1: LED Control
-        xTaskCreate(TaskLEDControl, "LED_Task", 2048, (void*)sharedData, 2, NULL);
-
-        // Tạo Task 2: NeoPixel
-        // xTaskCreate(neo_blinky, "Neo_Task", 2048, (void*)sharedData, 2, NULL);
+        // Các Task điều khiển phần cứng (Ưu tiên trung bình)
+        xTaskCreate(TaskLEDControl, "LED_Task", 2048, (void*)sharedData, 3, NULL);
+        xTaskCreate(neo_blinky, "NeoPixel_Task", 2048, (void*)sharedData, 3, NULL);
+        xTaskCreate(TaskLCD, "LCD_Task", 4096, (void*)sharedData, 3, NULL);
+        
+        // --- THÊM TASK 5: TINYML ANOMALY DETECTION ---
+        // Cấp phát 8192 bytes RAM (TensorFlow ngốn khá nhiều RAM)
+        // Mức ưu tiên thấp nhất (Priority 1) vì AI chạy tốn CPU, không được làm nghẽn các Task khác
+        xTaskCreate(tiny_ml_task, "TinyML_Task", 8192, (void*)sharedData, 1, NULL);
+        
+        Serial.println("Tao Task thanh cong! He thong dang chay...");
     }
 
-    // if (sharedData->lcdUpdateSemaphore != NULL) {
-    //     xTaskCreate(TaskLCD, "LCD_Task", 4096, (void*)sharedData, 2, NULL);
-    // }
-
-    InitWebServer();
+    InitWebServer((void *)sharedData);
     xTaskCreate(coreiot_task, "CoreIOT_Task", 8192, (void*)sharedData, 2, NULL);
-    // xTaskCreate(tiny_ml_task, "Tiny ML Task" ,2048  ,NULL  ,2 , NULL);
-    xTaskCreate(Task_Toogle_BOOT, "Task_Toogle_BOOT", 4096, NULL, 2, NULL);
 }
 
 void loop() {
-    // Dọn dẹp task loop để tiết kiệm tài nguyên
     vTaskDelete(NULL); 
 }

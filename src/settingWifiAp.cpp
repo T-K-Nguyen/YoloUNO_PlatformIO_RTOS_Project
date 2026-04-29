@@ -1,23 +1,26 @@
 #include "settingWifiAp.h"
 
+// Biến tĩnh (Static) - Chỉ dùng nội bộ trong file này, ẩn hoàn toàn với bên ngoài
+static String ssid = "esp32_myown";
+static String password = "123456789";
+
+String wifi_ssid;     // Nếu task_webserver.cpp cần ghi vào biến này, có thể không dùng static
+String wifi_password; // Hoặc tốt nhất là truyền qua hàm setWifiConfig()
+
 bool WIFI_STATE = 0;
 bool WIFI_SEND = 0;
 bool WIFI_RECONNECTING = 0;
 
-
-
-
-
-
-
-void InitAP() {
+void InitAP()
+{
 
     Serial.println("Setting AP");
 
     WiFi.mode(WIFI_AP_STA);
 
     bool ok = WiFi.softAP(ssid, password);
-    if(!ok) {
+    if (!ok)
+    {
         Serial.println("softAP failed!");
         return;
     }
@@ -25,7 +28,6 @@ void InitAP() {
     Serial.println("AP Started");
     Serial.print("AP IP: ");
     Serial.println(WiFi.softAPIP());
-
 }
 
 
@@ -83,7 +85,8 @@ void InitWifi() {
     WiFi.begin(localSsid.c_str(), localPass.c_str());
     
     unsigned long startTime = millis();
-    while (WiFi.status() != WL_CONNECTED && (millis() - startTime) < 10000) { // Timeout 10 giây
+    while (WiFi.status() != WL_CONNECTED && (millis() - startTime) < 10000)
+    { // Timeout 10 giây
         vTaskDelay(500 / portTICK_PERIOD_MS);
         Serial.print(".");
     }

@@ -4,5 +4,5 @@
         "board/esp32s3-bridge.cfg"
     ],
     "idf.currentSetup": "c:\\Users\\thuan\\v5.5.1\\esp-idf",
-    "liveServer.settings.port": 5501
+    "liveServer.settings.port": 5504
 }

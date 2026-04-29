@@ -1,5 +1,5 @@
-#ifndef __GLOBAL_H__
-#define __GLOBAL_H__
+#ifndef __SYSTEM_CONFIG_H__
+#define __SYSTEM_CONFIG_H__
 
 // Include libraries
 #include <Arduino.h>
@@ -18,8 +18,6 @@
 #include <HTTPClient.h>
 #include <Wire.h>
 
-
-
 // Include task headers
 
 #include "shared_data.h"
@@ -35,13 +33,7 @@
 #define BOOT_PIN 0
 #define WIFI_CONNECTED_BIT BIT0
 
-
-// Declare global variables
-extern float glob_temperature;
-extern float glob_humidity;
-
-extern String WIFI_SSID;
-extern String WIFI_PASS;
+// Declare system variables
 extern String CORE_IOT_TOKEN;
 extern String CORE_IOT_SERVER;
 extern String CORE_IOT_PORT;
@@ -64,6 +56,9 @@ extern EventGroupHandle_t xSystemEventGroup;
 extern SemaphoreHandle_t xMutexCloudConfig;
 extern SemaphoreHandle_t xMutexWifiConfig;
 
-
+String CORE_IOT_TOKEN = "68PBxgP1uYZWp1Wk4zXE";
+String CORE_IOT_SERVER = "app.coreiot.io";
+String CORE_IOT_PORT = "1883";
+String LOCAL_MQTT_BROKER_IP = "";
+String LOCAL_MQTT_BROKER_PORT = "1883";
 #endif
-
