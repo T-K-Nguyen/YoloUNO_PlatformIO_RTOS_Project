@@ -57,9 +57,9 @@ void coreiot_task(void *pvParameters)
     }
     loggedWifiWait = false;
 
-    // 2) Cloud + local broker connection
+    // 2) Cloud connection (local broker disabled for Part 1 testing)
     CORE_IOT_reconnect();
-    CORE_IOT_reconnectLocalBroker();
+    // CORE_IOT_reconnectLocalBroker();  // DISABLED: Testing CoreIOT only
 
     // 3) Send telemetry data
     const TickType_t now = xTaskGetTickCount();
@@ -77,7 +77,8 @@ void coreiot_task(void *pvParameters)
         cloudTelemetryOk = tempOk && humOk && lonOk && latOk;
       }
 
-      const bool localTelemetryOk = CORE_IOT_publishLocalTelemetry(data->temperature, data->humidity, DEVICE_LONGITUDE, DEVICE_LATITUDE);
+      // DISABLED: Local broker testing deferred to Part 2
+      // const bool localTelemetryOk = CORE_IOT_publishLocalTelemetry(data->temperature, data->humidity, DEVICE_LONGITUDE, DEVICE_LATITUDE);
 
       if (cloudTelemetryOk)
       {
@@ -95,14 +96,9 @@ void coreiot_task(void *pvParameters)
         Serial.println("[COREIOT] Cloud telemetry skipped/failed (cloud not connected or publish error).");
       }
 
-      if (!localTelemetryOk)
-      {
-        Serial.println("[LOCAL-MQTT] Telemetry publish failed.");
-      }
-      else
-      {
-        Serial.println("[LOCAL-MQTT] Telemetry published.");
-      }
+      // DISABLED: Local broker testing deferred to Part 2
+      // if (!localTelemetryOk) { Serial.println("[LOCAL-MQTT] Telemetry publish failed."); }
+      // else { Serial.println("[LOCAL-MQTT] Telemetry published."); }
       lastTelemetryTick = now;
       xSemaphoreGive(data->dataMutex);
     }
@@ -122,7 +118,8 @@ void coreiot_task(void *pvParameters)
         cloudAttrOk = false;
       }
 
-      bool localAttrOk = false;
+      // DISABLED: Local broker testing deferred to Part 2
+      // bool localAttrOk = false;
 
       if (xMutexCloudConfig != NULL &&
           xSemaphoreTake(xMutexCloudConfig, pdMS_TO_TICKS(50)) == pdTRUE)
@@ -131,13 +128,14 @@ void coreiot_task(void *pvParameters)
         {
           cloudAttrOk = CORE_IOT_sendata("attribute", "coreiotServer", CORE_IOT_SERVER) && cloudAttrOk;
         }
-        localAttrOk = CORE_IOT_publishLocalAttributes(WiFi.localIP().toString(), (WiFi.status() == WL_CONNECTED), WiFi.RSSI(), CORE_IOT_SERVER);
+        // DISABLED: Local broker publish - deferred to Part 2
+        // localAttrOk = CORE_IOT_publishLocalAttributes(WiFi.localIP().toString(), (WiFi.status() == WL_CONNECTED), WiFi.RSSI(), CORE_IOT_SERVER);
         xSemaphoreGive(xMutexCloudConfig);
       }
-      else
-      {
-        localAttrOk = CORE_IOT_publishLocalAttributes(WiFi.localIP().toString(), (WiFi.status() == WL_CONNECTED), WiFi.RSSI(), CORE_IOT_SERVER);
-      }
+      // DISABLED: Local broker publish - deferred to Part 2
+      // else {
+      //   localAttrOk = CORE_IOT_publishLocalAttributes(WiFi.localIP().toString(), (WiFi.status() == WL_CONNECTED), WiFi.RSSI(), CORE_IOT_SERVER);
+      // }
 
       lastAttributeTick = now;
       if (cloudAttrOk)
@@ -149,14 +147,9 @@ void coreiot_task(void *pvParameters)
         Serial.println("[COREIOT] Cloud attribute skipped/failed (cloud not connected or publish error).");
       }
 
-      if (!localAttrOk)
-      {
-        Serial.println("[LOCAL-MQTT] Attribute publish failed.");
-      }
-      else
-      {
-        Serial.println("[LOCAL-MQTT] Attribute published.");
-      }
+      // DISABLED: Local broker logging - deferred to Part 2
+      // if (!localAttrOk) { Serial.println("[LOCAL-MQTT] Attribute publish failed."); }
+      // else { Serial.println("[LOCAL-MQTT] Attribute published."); }
     }
 
     vTaskDelayUntil(&lastWake, loopInterval);

@@ -5,20 +5,22 @@ document.getElementById('wifi-config-form').addEventListener('submit', async fun
     e.preventDefault();
     const ssid = document.getElementById('ssid').value;
     const password = document.getElementById('password').value;
-    const localMqttIp = document.getElementById('local-mqtt-ip').value;
-    const localMqttPort = document.getElementById('local-mqtt-port').value || '1883';
+    // DISABLED (Part 2): Local MQTT Broker config - only testing CoreIOT in Part 1
+    // const localMqttIp = document.getElementById('local-mqtt-ip').value;
+    // const localMqttPort = document.getElementById('local-mqtt-port').value || '1883';
 
-    if (!ssid.trim() || !password.trim() || !localMqttIp.trim()) {
-        alert("Vui lòng điền SSID, password và Local MQTT Broker IP!");
+    if (!ssid.trim() || !password.trim()) {
+        alert("Vui lòng điền SSID và password!");
         return;
     }
     alert(`Đã gửi tín hiệu kết nối với WIFI ${ssid}`);  
     ws.send(JSON.stringify({
         action: "wifi",
         ssid: ssid,
-        password: password,
-        local_mqtt_ip: localMqttIp,
-        local_mqtt_port: localMqttPort
+        password: password
+        // DISABLED (Part 2): Local MQTT fields
+        // local_mqtt_ip: localMqttIp,
+        // local_mqtt_port: localMqttPort
     }));
 });
 
