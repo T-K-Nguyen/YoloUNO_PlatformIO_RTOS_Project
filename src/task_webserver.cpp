@@ -176,7 +176,12 @@ void parseWebSocketMessage(AsyncWebSocketClient *client, const String &message)
     {
         // Xử lý cấu hình WiFi
         handleWifiConfig(client, message);
-    } else if (message.startsWith("{\"action\":\"toggle_device")) {
+    }
+    else if (message.startsWith("{\"action\":\"mqtt_config\""))
+    {
+        handleMqttConfig(client, message);
+    }
+    else if (message.startsWith("{\"action\":\"toggle_device")) {
         // Xử lý toggle motor/fan
         handleToggleDevice(message);
     }
@@ -244,22 +249,21 @@ void handleWifiConfig(AsyncWebSocketClient *client, const String &message) {
     const char* coreiotToken = doc["coreiot_token"];
     const char* coreiotServer = doc["coreiot_server"];
     const char* coreiotPort = doc["coreiot_port"];
-    
-    // DISABLED (Part 2): Local MQTT Broker config - only testing CoreIOT in Part 1
-    // const char* localMqttBrokerIp = doc["local_mqtt_ip"];
-    // if (localMqttBrokerIp == nullptr || strlen(localMqttBrokerIp) == 0) {
-    //     localMqttBrokerIp = doc["localMqttIp"];
-    // }
-    // if (localMqttBrokerIp == nullptr || strlen(localMqttBrokerIp) == 0) {
-    //     localMqttBrokerIp = doc["mqtt_ip"];
-    // }
-    // const char* localMqttBrokerPort = doc["local_mqtt_port"];
-    // if (localMqttBrokerPort == nullptr || strlen(localMqttBrokerPort) == 0) {
-    //     localMqttBrokerPort = doc["localMqttPort"];
-    // }
-    // if (localMqttBrokerPort == nullptr || strlen(localMqttBrokerPort) == 0) {
-    //     localMqttBrokerPort = doc["mqtt_port"];
-    // }
+    const char* localMqttBrokerIp = doc["local_mqtt_ip"];
+    if (localMqttBrokerIp == nullptr || strlen(localMqttBrokerIp) == 0) {
+        localMqttBrokerIp = doc["localMqttIp"];
+    }
+    if (localMqttBrokerIp == nullptr || strlen(localMqttBrokerIp) == 0) {
+        localMqttBrokerIp = doc["mqtt_ip"];
+    }
+
+    const char* localMqttBrokerPort = doc["local_mqtt_port"];
+    if (localMqttBrokerPort == nullptr || strlen(localMqttBrokerPort) == 0) {
+        localMqttBrokerPort = doc["localMqttPort"];
+    }
+    if (localMqttBrokerPort == nullptr || strlen(localMqttBrokerPort) == 0) {
+        localMqttBrokerPort = doc["mqtt_port"];
+    }
 
     // Kiểm tra SSID kỹ lưỡng
     if (ssid == nullptr || strlen(ssid) == 0)
@@ -312,25 +316,51 @@ void handleWifiConfig(AsyncWebSocketClient *client, const String &message) {
     String tokenToSave = (coreiotToken != nullptr && strlen(coreiotToken) > 0) ? String(coreiotToken) : tokenSnapshot;
     String serverToSave = (coreiotServer != nullptr && strlen(coreiotServer) > 0) ? String(coreiotServer) : serverSnapshot;
     String portToSave = (coreiotPort != nullptr && strlen(coreiotPort) > 0) ? String(coreiotPort) : portSnapshot;
-    
-    // DISABLED (Part 2): Local MQTT Broker config - only testing CoreIOT in Part 1
-    // String localBrokerIpToSave = (localMqttBrokerIp != nullptr && strlen(localMqttBrokerIp) > 0) ? String(localMqttBrokerIp) : localBrokerIpSnapshot;
-    // String localBrokerPortToSave = (localMqttBrokerPort != nullptr && strlen(localMqttBrokerPort) > 0) ? String(localMqttBrokerPort) : localBrokerPortSnapshot;
-    // bool localBrokerIpRejected = false;
-    
-    // [DISABLED] Fallback and validation logic for local broker IP
-    // if (localBrokerIpToSave.length() == 0 && client != nullptr) { ... }
-    // if (localBrokerPortToSave.length() == 0) { ... }
-    // if (localBrokerIpToSave.startsWith("192.168.4.")) { ... }
+    String localBrokerIpToSave = (localMqttBrokerIp != nullptr && strlen(localMqttBrokerIp) > 0) ? String(localMqttBrokerIp) : localBrokerIpSnapshot;
+    String localBrokerPortToSave = (localMqttBrokerPort != nullptr && strlen(localMqttBrokerPort) > 0) ? String(localMqttBrokerPort) : localBrokerPortSnapshot;
+    bool localBrokerIpRejected = false;
 
-    String localBrokerIpToSave = "";  // Empty for Part 1 - local broker disabled
-    String localBrokerPortToSave = "1883";
+    if (localBrokerIpToSave.length() == 0 && client != nullptr) {
+            const String candidateIp = client->remoteIP().toString();
+            const bool isDeviceApSubnet = candidateIp.startsWith("192.168.4.");
+
+            if (!isDeviceApSubnet) {
+                localBrokerIpToSave = candidateIp;
+                Serial.print("[WebConfig] local_mqtt_ip missing. Fallback to websocket client IP: ");
+                Serial.println(localBrokerIpToSave);
+            } else {
+                Serial.print("[WebConfig] local_mqtt_ip missing and websocket client IP is AP subnet (");
+                Serial.print(candidateIp);
+                Serial.println("). Please input PC LAN IP running TinyMQTT (example: 172.20.10.x).\n[WebConfig] Keep local broker IP empty to avoid wrong target.");
+            }
+    }
+
+    if (localBrokerPortToSave.length() == 0) {
+        localBrokerPortToSave = "1883";
+    }
+
+    // Reject AP subnet as MQTT broker target: 192.168.4.x is ESP config AP network,
+    // not the LAN where TinyMQTT broker usually runs.
+    if (localBrokerIpToSave.startsWith("192.168.4.")) {
+        localBrokerIpRejected = true;
+        if (localBrokerIpSnapshot.length() > 0 && !localBrokerIpSnapshot.startsWith("192.168.4.")) {
+            Serial.print("[WebConfig] Reject local_mqtt_ip in AP subnet: ");
+            Serial.print(localBrokerIpToSave);
+            Serial.print(". Keep previous valid broker IP: ");
+            Serial.println(localBrokerIpSnapshot);
+            localBrokerIpToSave = localBrokerIpSnapshot;
+        } else {
+            Serial.print("[WebConfig] Reject local_mqtt_ip in AP subnet: ");
+            Serial.print(localBrokerIpToSave);
+            Serial.println(". Please set PC LAN IP running TinyMQTT (example: 172.20.10.2).");
+            localBrokerIpToSave = "";
+        }
+    }
 
     Serial.println("Received WiFi config:");
     Serial.println("SSID: " + newWifiSsid);
     Serial.println("Password length: " + String(newWifiPass.length()));
-    // DISABLED: Local MQTT Broker output (Part 2)
-    // Serial.println("Local MQTT Broker: " + localBrokerIpToSave + ":" + localBrokerPortToSave);
+    Serial.println("Local MQTT Broker: " + localBrokerIpToSave + ":" + localBrokerPortToSave);
 
     // Lưu cấu hình vào file ngay
     bool saved = Save_info_File(newWifiSsid, newWifiPass, tokenToSave, serverToSave, portToSave, localBrokerIpToSave, localBrokerPortToSave, false);
@@ -344,10 +374,97 @@ void handleWifiConfig(AsyncWebSocketClient *client, const String &message) {
     JsonDocument resp;
     resp["type"] = "wifi_config_saved";
     resp["success"] = saved;
-    // DISABLED (Part 2): Local broker warning - not applicable in Part 1
-    // if (localBrokerIpRejected) {
-    //     resp["warning"] = "local_mqtt_ip belongs to ESP AP subnet (192.168.4.x). Use LAN IP of the TinyMQTT host, e.g. 172.20.10.2.";
-    // }
+    if (localBrokerIpRejected) {
+        resp["warning"] = "local_mqtt_ip belongs to ESP AP subnet (192.168.4.x). Use LAN IP of the TinyMQTT host, e.g. 172.20.10.2.";
+    }
+    String respBuf;
+    serializeJson(resp, respBuf);
+    sendWebSocketMessage(respBuf);
+}
+
+void handleMqttConfig(AsyncWebSocketClient *client, const String &message)
+{
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, message);
+
+    if (error)
+    {
+        Serial.print("JSON parsing failed (mqtt_config): ");
+        Serial.println(error.c_str());
+        return;
+    }
+
+    const char *localMqttBrokerIp = doc["local_mqtt_ip"];
+    if ((localMqttBrokerIp == nullptr || strlen(localMqttBrokerIp) == 0) && doc["localMqttIp"].is<const char *>())
+    {
+        localMqttBrokerIp = doc["localMqttIp"];
+    }
+
+    const char *localMqttBrokerPort = doc["local_mqtt_port"];
+    if ((localMqttBrokerPort == nullptr || strlen(localMqttBrokerPort) == 0) && doc["localMqttPort"].is<const char *>())
+    {
+        localMqttBrokerPort = doc["localMqttPort"];
+    }
+
+    String localBrokerIpToSave = (localMqttBrokerIp != nullptr) ? String(localMqttBrokerIp) : "";
+    String localBrokerPortToSave = (localMqttBrokerPort != nullptr && strlen(localMqttBrokerPort) > 0) ? String(localMqttBrokerPort) : "1883";
+    bool localBrokerIpRejected = false;
+
+    if (localBrokerIpToSave.length() == 0 && client != nullptr)
+    {
+        const String candidateIp = client->remoteIP().toString();
+        if (!candidateIp.startsWith("192.168.4."))
+        {
+            localBrokerIpToSave = candidateIp;
+        }
+    }
+
+    if (localBrokerIpToSave.startsWith("192.168.4."))
+    {
+        localBrokerIpRejected = true;
+        localBrokerIpToSave = "";
+    }
+
+    String wifiSsidSnapshot;
+    String wifiPassSnapshot;
+    WifiGetCredentials(wifiSsidSnapshot, wifiPassSnapshot);
+
+    String tokenSnapshot;
+    String serverSnapshot;
+    String portSnapshot;
+    if (xMutexCloudConfig != NULL &&
+        xSemaphoreTake(xMutexCloudConfig, pdMS_TO_TICKS(50)) == pdTRUE)
+    {
+        tokenSnapshot = CORE_IOT_TOKEN;
+        serverSnapshot = CORE_IOT_SERVER;
+        portSnapshot = CORE_IOT_PORT;
+        xSemaphoreGive(xMutexCloudConfig);
+    }
+    else
+    {
+        tokenSnapshot = CORE_IOT_TOKEN;
+        serverSnapshot = CORE_IOT_SERVER;
+        portSnapshot = CORE_IOT_PORT;
+    }
+
+    bool saved = Save_info_File(
+        wifiSsidSnapshot,
+        wifiPassSnapshot,
+        tokenSnapshot,
+        serverSnapshot,
+        portSnapshot,
+        localBrokerIpToSave,
+        localBrokerPortToSave,
+        false);
+
+    JsonDocument resp;
+    resp["type"] = "mqtt_config_saved";
+    resp["success"] = saved;
+    if (localBrokerIpRejected)
+    {
+        resp["warning"] = "local_mqtt_ip belongs to ESP AP subnet (192.168.4.x). Use LAN IP of the TinyMQTT host.";
+    }
+
     String respBuf;
     serializeJson(resp, respBuf);
     sendWebSocketMessage(respBuf);
