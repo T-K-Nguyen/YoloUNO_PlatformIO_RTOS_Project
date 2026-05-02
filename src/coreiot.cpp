@@ -57,8 +57,7 @@ void coreiot_task(void *pvParameters)
     }
     loggedWifiWait = false;
 
-    // 2) Cloud + local broker connection (Part 2: TinyMQTT enabled)
-    CORE_IOT_reconnect();
+    // 2) Local broker connection only (cloud publish is handled by gateway)
     CORE_IOT_reconnectLocalBroker();
 
     // 3) Send telemetry data
@@ -67,21 +66,15 @@ void coreiot_task(void *pvParameters)
         data != nullptr && data->dataMutex != NULL &&
         xSemaphoreTake(data->dataMutex, pdMS_TO_TICKS(100)) == pdTRUE)
     {
-      bool cloudTelemetryOk = false;
-      if (CORE_IOT_isConnected())
-      {
-        const bool tempOk = CORE_IOT_sendata("telemetry", "temperature", String(data->temperature, 2));
-        const bool humOk = CORE_IOT_sendata("telemetry", "humidity", String(data->humidity, 2));
-        const bool lonOk = CORE_IOT_sendata("telemetry", "longitude", String(DEVICE_LONGITUDE, 6));
-        const bool latOk = CORE_IOT_sendata("telemetry", "latitude", String(DEVICE_LATITUDE, 6));
-        cloudTelemetryOk = tempOk && humOk && lonOk && latOk;
-      }
-
       const bool localTelemetryOk = CORE_IOT_publishLocalTelemetry(data->temperature, data->humidity, DEVICE_LONGITUDE, DEVICE_LATITUDE);
 
-      if (cloudTelemetryOk)
+      if (!localTelemetryOk)
       {
-        Serial.print("[COREIOT] Telemetry sent T=");
+        Serial.println("[LOCAL-MQTT] Telemetry publish failed.");
+      }
+      else
+      {
+        Serial.print("[LOCAL-MQTT] Telemetry published T=");
         Serial.print(data->temperature, 2);
         Serial.print(" H=");
         Serial.print(data->humidity, 2);
@@ -90,19 +83,6 @@ void coreiot_task(void *pvParameters)
         Serial.print(" Lat=");
         Serial.println(DEVICE_LATITUDE, 6);
       }
-      else
-      {
-        Serial.println("[COREIOT] Cloud telemetry skipped/failed (cloud not connected or publish error).");
-      }
-
-      if (!localTelemetryOk)
-      {
-        Serial.println("[LOCAL-MQTT] Telemetry publish failed.");
-      }
-      else
-      {
-        Serial.println("[LOCAL-MQTT] Telemetry published.");
-      }
       lastTelemetryTick = now;
       xSemaphoreGive(data->dataMutex);
     }
@@ -110,27 +90,11 @@ void coreiot_task(void *pvParameters)
     // 4) Send attribute data
     if ((now - lastAttributeTick) >= attributeInterval)
     {
-      bool cloudAttrOk = true;
       bool localAttrOk = false;
-
-      if (CORE_IOT_isConnected())
-      {
-        cloudAttrOk = CORE_IOT_sendata("attribute", "localIp", WiFi.localIP().toString()) && cloudAttrOk;
-        cloudAttrOk = CORE_IOT_sendata("attribute", "wifiConnected", (WiFi.status() == WL_CONNECTED) ? "true" : "false") && cloudAttrOk;
-        cloudAttrOk = CORE_IOT_sendata("attribute", "wifiRssi", String(WiFi.RSSI())) && cloudAttrOk;
-      }
-      else
-      {
-        cloudAttrOk = false;
-      }
 
       if (xMutexCloudConfig != NULL &&
           xSemaphoreTake(xMutexCloudConfig, pdMS_TO_TICKS(50)) == pdTRUE)
       {
-        if (CORE_IOT_isConnected())
-        {
-          cloudAttrOk = CORE_IOT_sendata("attribute", "coreiotServer", CORE_IOT_SERVER) && cloudAttrOk;
-        }
         localAttrOk = CORE_IOT_publishLocalAttributes(WiFi.localIP().toString(), (WiFi.status() == WL_CONNECTED), WiFi.RSSI(), CORE_IOT_SERVER);
         xSemaphoreGive(xMutexCloudConfig);
       }
@@ -140,15 +104,6 @@ void coreiot_task(void *pvParameters)
       }
 
       lastAttributeTick = now;
-      if (cloudAttrOk)
-      {
-        Serial.println("[COREIOT] Attribute batch sent.");
-      }
-      else
-      {
-        Serial.println("[COREIOT] Cloud attribute skipped/failed (cloud not connected or publish error).");
-      }
-
       if (!localAttrOk)
       {
         Serial.println("[LOCAL-MQTT] Attribute publish failed.");

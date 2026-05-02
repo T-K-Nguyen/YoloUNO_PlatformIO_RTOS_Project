@@ -25,6 +25,7 @@ static String lastCloudServer;
 static String lastCloudToken;
 static int lastCloudPort = 0;
 static bool cloudSubscriptionsReady = false;
+static bool cloudDisabledLogPrinted = false;
 
 // --- GLOBAL POINTER để SensorData có thể dùng được trong RPC callback ---
 static SensorData* gSensorData = NULL;
@@ -362,156 +363,29 @@ bool CORE_IOT_publishLocalAttributes(const String &localIp, bool wifiConnected, 
 
 bool CORE_IOT_sendata(String mode, String feed, String data)
 {
-    if (!tb.connected())
-    {
-        return false;
-    }
-
-    if (mode == "attribute")
-    {
-        return tb.sendAttributeData(feed.c_str(), data.c_str());
-    }
-    else if (mode == "telemetry")
-    {
-        float value = data.toFloat();
-        return tb.sendTelemetryData(feed.c_str(), value);
-    }
-    else
-    {
-        // handle unknown mode
-        return false;
-    }
+    (void)mode;
+    (void)feed;
+    (void)data;
+    return false;
 }
 
 void CORE_IOT_reconnect()
 {
-    String server;
-    String token;
-    int port = 1883;
-
-    if (xMutexCloudConfig != NULL &&
-        xSemaphoreTake(xMutexCloudConfig, pdMS_TO_TICKS(100)) == pdTRUE)
-    {
-        server = CORE_IOT_SERVER;
-        token = CORE_IOT_TOKEN;
-        port = CORE_IOT_PORT.toInt();
-        xSemaphoreGive(xMutexCloudConfig);
-    }
-
-    if (server.isEmpty() || token.isEmpty() || port <= 0)
-    {
-        Serial.println("[COREIOT] Missing server/token/port config.");
-        return;
-    }
-
-    const bool cloudConfigChanged =
-        (server != lastCloudServer) ||
-        (token != lastCloudToken) ||
-        (port != lastCloudPort);
-
-    if (cloudConfigChanged)
-    {
-        if (tb.connected())
-        {
-            tb.disconnect();
-        }
-        cloudSubscriptionsReady = false;
-        lastCloudServer = server;
-        lastCloudToken = token;
-        lastCloudPort = port;
-        nextCloudReconnectTick = 0;
-        Serial.println("[COREIOT] Cloud config changed, reset connection state.");
-    }
-
-    // // --- KIỂM TRA NẾUOKEN ĐÃ THAY ĐỔI -> FORCE DISCONNECT ---
-    // if (lastCachedToken != token)
-    // {
-    //     if (tb.connected())
-    //     {
-    //         Serial.println("[COREIOT] Token changed detected! Disconnecting old connection...");
-    //         tb.disconnect();
-    //         vTaskDelay(pdMS_TO_TICKS(500)); // Chờ disconnect hoàn toàn
-    //     }
-    //     lastCachedToken = token;
-    //     Serial.print("[COREIOT] New token: ");
-    //     Serial.println(token.substring(0, min((int)token.length(), 8)) + "...");
-    // }
-
-    if (!tb.connected())
-    {
-        const TickType_t now = xTaskGetTickCount();
-        if (nextCloudReconnectTick != 0 && now < nextCloudReconnectTick)
-        {
-            return;
-        }
-
-        const String cloudClientId = "tb-" + buildLocalDeviceId();
-
-        Serial.print("[COREIOT] Connecting to ");
-        Serial.print(server);
-        Serial.print(":");
-        Serial.print(port);
-        Serial.print(" token=");
-        Serial.println(token.substring(0, min((int)token.length(), 8)) + "...");
-
-        if (!tb.connect(server.c_str(), token.c_str(), port, cloudClientId.c_str()))
-        {
-            Serial.println("[COREIOT] ThingsBoard connect failed.");
-            nextCloudReconnectTick = now + CLOUD_RECONNECT_BACKOFF;
-            return;
-        }
-
-        Serial.println("[COREIOT] ThingsBoard connected.");
-        nextCloudReconnectTick = 0;
-
-        tb.sendAttributeData("macAddress", WiFi.macAddress().c_str());
-
-        if (!cloudSubscriptionsReady)
-        {
-            Serial.println("Subscribing for RPC...");
-            if (!tb.RPC_Subscribe(callbacks.cbegin(), callbacks.cend()))
-            {
-                Serial.println("[COREIOT] Failed to subscribe for RPC");
-                tb.disconnect();
-                nextCloudReconnectTick = now + CLOUD_RECONNECT_BACKOFF;
-                return;
-            }
-            Serial.println("[COREIOT] RPC subscribe success");
-
-            if (!tb.Shared_Attributes_Subscribe(attributes_callback))
-            {
-                Serial.println("[COREIOT] Failed to subscribe for shared attribute updates");
-                tb.disconnect();
-                nextCloudReconnectTick = now + CLOUD_RECONNECT_BACKOFF;
-                return;
-            }
-
-            Serial.println("[COREIOT] Shared attributes subscribe success");
-
-            if (!tb.Shared_Attributes_Request(attribute_shared_request_callback))
-            {
-                Serial.println("[COREIOT] Failed to request shared attributes");
-                tb.disconnect();
-                nextCloudReconnectTick = now + CLOUD_RECONNECT_BACKOFF;
-                return;
-            }
-            Serial.println("[COREIOT] Shared attributes request success");
-
-            cloudSubscriptionsReady = true;
-        }
-
-        tb.sendAttributeData("localIp", WiFi.localIP().toString().c_str());
-    }
-
     if (tb.connected())
     {
-        tb.loop();
+        tb.disconnect();
+    }
+
+    if (!cloudDisabledLogPrinted)
+    {
+        Serial.println("[COREIOT] Direct cloud publish disabled. Using local MQTT only.");
+        cloudDisabledLogPrinted = true;
     }
 }
 
 bool CORE_IOT_isConnected()
 {
-    return tb.connected();
+    return false;
 }
 
 void CORE_IOT_setSensorData(SensorData* sensor_data)
