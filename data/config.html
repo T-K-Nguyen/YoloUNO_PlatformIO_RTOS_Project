@@ -45,23 +45,21 @@
           </button>
         </div>
 
-        <div class="row g-4 d-flex align-items-stretch">
-          <!-- WiFi Form -->
-          <div class="col-lg-6">
+        <div class="row g-4 justify-content-center">
+          <div class="col-lg-8">
             <div class="custom-card">
               <div class="d-flex align-items-center mb-4">
                 <div
                   class="icon-shape bg-primary bg-opacity-10 text-primary rounded-circle me-3"
                 >
-                  <i class="fa-solid fa-wifi fs-4"></i>
+                  <i class="fa-solid fa-gears fs-4"></i>
                 </div>
-                <h4 class="mb-0 text-main fw-bold">WiFi Settings</h4>
+                <h4 class="mb-0 text-main fw-bold">WiFi + MQTT Settings</h4>
               </div>
+
               <form id="wifi-config-form">
                 <div class="mb-3">
-                  <label for="ssid" class="form-label fw-semibold"
-                    >SSID / Tên Mạng</label
-                  >
+                  <label for="ssid" class="form-label fw-semibold">SSID / Tên Mạng</label>
                   <input
                     type="text"
                     class="form-control"
@@ -70,10 +68,9 @@
                     required
                   />
                 </div>
-                <div class="mb-4">
-                  <label for="password" class="form-label fw-semibold"
-                    >Mật khẩu</label
-                  >
+
+                <div class="mb-3">
+                  <label for="password" class="form-label fw-semibold">Mật khẩu</label>
                   <input
                     type="password"
                     class="form-control"
@@ -82,69 +79,37 @@
                     required
                   />
                 </div>
+
+                <div class="mb-3">
+                  <label for="localMqttIp" class="form-label fw-semibold">Local MQTT Broker IP</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="localMqttIp"
+                    placeholder="Example: 192.168.1.100"
+                    required
+                  />
+                </div>
+
+                <div class="mb-4">
+                  <label for="localMqttPort" class="form-label fw-semibold">Local MQTT Broker Port</label>
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="localMqttPort"
+                    placeholder="1883"
+                    value="1883"
+                    min="1"
+                    max="65535"
+                  />
+                </div>
+
                 <button
                   type="submit"
                   class="btn btn-primary w-100 mt-2"
                   id="wifi-connect-btn"
                 >
-                  <i class="fa-solid fa-floppy-disk me-2"></i>Lưu WiFi
-                </button>
-              </form>
-            </div>
-          </div>
-
-          <!-- MQTT Form -->
-          <div class="col-lg-6">
-            <div class="custom-card">
-              <div class="d-flex align-items-center mb-4">
-                <div
-                  class="icon-shape bg-warning bg-opacity-10 text-warning rounded-circle me-3"
-                >
-                  <i class="fa-solid fa-network-wired fs-4"></i>
-                </div>
-                <h4 class="mb-0 text-main fw-bold">MQTT Settings</h4>
-              </div>
-              <form id="mqttForm">
-                <div class="mb-3">
-                  <label for="mqttServer" class="form-label fw-semibold"
-                    >Server / Broker</label
-                  >
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="mqttServer"
-                    placeholder="VD: mqtt.thinger.io"
-                    required
-                  />
-                </div>
-                <div class="row">
-                  <div class="col-md-8 mb-3">
-                    <label for="mqttToken" class="form-label fw-semibold"
-                      >Token / Username</label
-                    >
-                    <input
-                      type="text"
-                      class="form-control"
-                      id="mqttToken"
-                      placeholder="Nhập Token"
-                      required
-                    />
-                  </div>
-                  <div class="col-md-4 mb-4">
-                    <label for="mqttPort" class="form-label fw-semibold"
-                      >Port</label
-                    >
-                    <input
-                      type="number"
-                      class="form-control"
-                      id="mqttPort"
-                      placeholder="1883"
-                      required
-                    />
-                  </div>
-                </div>
-                <button type="submit" class="btn btn-primary w-100 mt-2">
-                  <i class="fa-solid fa-floppy-disk me-2"></i>Lưu MQTT
+                  <i class="fa-solid fa-floppy-disk me-2"></i>Lưu Cấu Hình
                 </button>
               </form>
             </div>

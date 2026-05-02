@@ -6,13 +6,60 @@
 #include "task_lcd.h"
 #include "tinyml.h"
 #include "task_webserver.h"
+#include "coreiot.h"
+#include "task_check_info.h"
+#include "settingWifiAp.h"
+#include "task_toogle_boot.h"
 #include "system_config.h"
+boolean isWifiConnected = false;
+
+// Khởi tạo các biến cấu hình Cloud/WiFi
+String WIFI_SSID = "";
+String WIFI_PASS = "";
+String CORE_IOT_TOKEN = "68PBxgP1uYZWp1Wk4zXE";
+String CORE_IOT_SERVER = "app.coreiot.io";
+String CORE_IOT_PORT = "1883";
+String LOCAL_MQTT_BROKER_IP = "";
+String LOCAL_MQTT_BROKER_PORT = "1883";
+
+// Khởi tạo các Handle của FreeRTOS bằng NULL
+EventGroupHandle_t xSystemEventGroup = NULL;
+SemaphoreHandle_t xMutexCloudConfig = NULL;
+SemaphoreHandle_t xMutexWifiConfig = NULL;
 
 void setup()
 {
     Serial.begin(115200);
     delay(5000); // Đợi Serial ổn định
+
+
+    // 1. CẤP PHÁT BỘ NHỚ CHO CÁC ĐỐI TƯỢNG ĐỒNG BỘ FREERTOS
+    xSystemEventGroup = xEventGroupCreate();
+    xMutexCloudConfig = xSemaphoreCreateMutex();
+    xMutexWifiConfig = xSemaphoreCreateMutex();
+
+    // 2. Kiểm tra an toàn: Nếu cấp phát thất bại thì dừng hệ thống
+    if (xSystemEventGroup == NULL || xMutexCloudConfig == NULL || xMutexWifiConfig == NULL) {
+        Serial.println("LỖI NGHIÊM TRỌNG: Không thể cấp phát tài nguyên FreeRTOS!");
+        while(1); // Dừng hệ thống tại đây
+    }
+
+
     Wire.begin(GPIO_NUM_11, GPIO_NUM_12); 
+
+    const bool hasSavedInfo = check_info_File(false);
+    bool hasWifiCredential = false;
+    String bootSsid;
+    String bootPass;
+    WifiGetCredentials(bootSsid, bootPass);
+    hasWifiCredential = bootSsid.length() > 0;
+
+    if (hasSavedInfo && hasWifiCredential) {
+        Serial.println("[BOOT] Found saved STA credentials, trying WiFi...");
+        InitWifi();
+    } else {
+        Serial.println("[BOOT] No STA credentials saved yet. Cloud publish is waiting for WiFi config.");
+    }
 
     // 1. Cấp phát vùng nhớ cho Struct
     SensorData *sharedData = new SensorData();
@@ -27,14 +74,22 @@ void setup()
     sharedData->humDry = 40.0f;
     sharedData->humDamp = 70.0f;
     sharedData->humCritical = 85.0f;
+    // ---
+
+    // --- KHỞI TẠO MANUAL LED OVERRIDE ---
+    sharedData->manualLedOverride = false;
+    sharedData->manualLedState = false;
+    sharedData->lastManualLedTick = 0;
+    // ---
 
     sharedData->dataMutex = xSemaphoreCreateMutex();
     sharedData->i2cMutex = xSemaphoreCreateMutex();
     sharedData->tempWarningSemaphore = xSemaphoreCreateBinary();
     sharedData->lcdUpdateSemaphore = xSemaphoreCreateBinary();
+    // sharedData->tinymlInputQueue = xQueueCreate(1, sizeof(TinyMLInputSample));
 
     if (sharedData->dataMutex != NULL && sharedData->i2cMutex != NULL) {
-        
+        xTaskCreate(Task_Toogle_BOOT, "Task_Toogle_BOOT", 4096, NULL, 2, NULL);
         // Task Sensor (Ưu tiên cao nhất để không lỡ nhịp dữ liệu)
         xTaskCreate(TaskSensor, "Sensor_Task", 4096, (void*)sharedData, 4, NULL);
         
@@ -52,6 +107,7 @@ void setup()
     }
 
     InitWebServer((void *)sharedData);
+    xTaskCreate(coreiot_task, "CoreIOT_Task", 8192, (void*)sharedData, 2, NULL);
 }
 
 void loop() {

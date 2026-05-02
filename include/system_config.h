@@ -6,6 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
+#include "freertos/event_groups.h"
 
 #include "LittleFS.h"
 #include "FS.h"
@@ -30,10 +31,26 @@
 #define LED1_PIN 48
 #define LED2_PIN 41
 #define BOOT_PIN 0
+#define WIFI_CONNECTED_BIT BIT0
 
 // Declare system variables
+
+extern bool pump_state;
+extern bool fan_state;
+extern bool led1_state;
+extern bool led2_state;
+
+extern boolean isWifiConnected;
+
+extern EventGroupHandle_t xSystemEventGroup;
+extern SemaphoreHandle_t xMutexCloudConfig;
+extern SemaphoreHandle_t xMutexWifiConfig;
+
+extern String WIFI_SSID;
+extern String WIFI_PASS;
 extern String CORE_IOT_TOKEN;
 extern String CORE_IOT_SERVER;
 extern String CORE_IOT_PORT;
-
+extern String LOCAL_MQTT_BROKER_IP;
+extern String LOCAL_MQTT_BROKER_PORT;
 #endif

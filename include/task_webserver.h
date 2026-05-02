@@ -16,7 +16,8 @@ extern void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEve
 extern void parseWebSocketMessage(AsyncWebSocketClient *client, const String &message);
 extern void sendSensorDataToWebSocket(float temperature, float humidity);
 extern void handleToggleDevice(const String &message);
-extern void handleWifiConfig(const String &message);
+extern void handleWifiConfig(AsyncWebSocketClient *client, const String &message);
+extern void handleMqttConfig(AsyncWebSocketClient *client, const String &message);
 
 extern void sendWebSocketMessage(String message);
 
