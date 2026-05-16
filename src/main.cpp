@@ -102,8 +102,8 @@ void setup()
         Serial.println("Tao Task thanh cong! He thong dang chay...");
     }
 
-    // InitWebServer((void *)sharedData);
-    // xTaskCreate(coreiot_task, "CoreIOT_Task", 8192, (void*)sharedData, 2, NULL);
+    InitWebServer((void *)sharedData);
+    xTaskCreate(coreiot_task, "CoreIOT_Task", 8192, (void*)sharedData, 2, NULL);
 }
 
 void loop() {
