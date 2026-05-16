@@ -10,18 +10,42 @@ void TaskSensor(void *pvParameters) {
 
     while(1) {
         int dhtStatus = -1; // Biến lưu trạng thái đọc
+        SensorRunMode sensorRunMode = SENSOR_MODE_NORMAL;
+        float currentTemp = 0.0f;
+        float currentHum = 0.0f;
 
-        // 1. Lấy chìa khóa I2C trước khi giao tiếp
-        if (xSemaphoreTake(data->i2cMutex, portMAX_DELAY) == pdTRUE) {
-            dhtStatus = DHT.read(); // ĐỌC VÀ LƯU LẠI KẾT QUẢ
-            xSemaphoreGive(data->i2cMutex);
+        if (xSemaphoreTake(data->dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+            sensorRunMode = data->sensorRunMode;
+            xSemaphoreGive(data->dataMutex);
+        }
+
+        if (sensorRunMode == SENSOR_MODE_FIXED_24_30) {
+            currentTemp = 24.0f;
+            currentHum = 30.0f;
+            dhtStatus = 0;
+        } else if (sensorRunMode == SENSOR_MODE_FIXED_30_50) {
+            currentTemp = 30.0f;
+            currentHum = 50.0f;
+            dhtStatus = 0;
+        } else if (sensorRunMode == SENSOR_MODE_FIXED_30_70) {
+            currentTemp = 40.0f;
+            currentHum = 80.0f;
+            dhtStatus = 0;
+        } else {
+            // 1. Lấy chìa khóa I2C trước khi giao tiếp
+            if (xSemaphoreTake(data->i2cMutex, portMAX_DELAY) == pdTRUE) {
+                dhtStatus = DHT.read(); // ĐỌC VÀ LƯU LẠI KẾT QUẢ
+                xSemaphoreGive(data->i2cMutex);
+            }
+
+            if (dhtStatus == 0) {
+                currentTemp = DHT.getTemperature();
+                currentHum = DHT.getHumidity();
+            }
         }
 
         // 2. CHỈ XỬ LÝ DỮ LIỆU KHI ĐỌC THÀNH CÔNG (status == 0)
         if (dhtStatus == 0) { 
-            float currentTemp = DHT.getTemperature();
-            float currentHum = DHT.getHumidity();
-
             // =========================================================
             // CHẾ ĐỘ KIỂM THỬ (MOCK TESTING) CHO TINYML
             // =========================================================
@@ -33,7 +57,7 @@ void TaskSensor(void *pvParameters) {
             // currentTemp = 28.0; currentHum = 92.0; 
 
             // TEST CASE 3: Sốc nhiệt -> AI Score phải > 95% (LCD: NGUY HIỂM)
-            // currentTemp = 42.0; currentHum = 40.0; 
+            currentTemp = 42.0; currentHum = 40.0; 
 
             // =========================================================
 

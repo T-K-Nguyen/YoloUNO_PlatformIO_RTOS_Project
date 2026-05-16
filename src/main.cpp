@@ -67,6 +67,7 @@ void setup()
     sharedData->humidity = 0.0f;
     sharedData->lastSensorUpdateTick = xTaskGetTickCount();
     sharedData->currentLcdState = LCD_NORMAL;
+    sharedData->sensorRunMode = SENSOR_MODE_NORMAL;
     
     // Ngưỡng cấu hình động
     sharedData->tempWarning = 25.0f;
@@ -89,25 +90,20 @@ void setup()
     // sharedData->tinymlInputQueue = xQueueCreate(1, sizeof(TinyMLInputSample));
 
     if (sharedData->dataMutex != NULL && sharedData->i2cMutex != NULL) {
-        xTaskCreate(Task_Toogle_BOOT, "Task_Toogle_BOOT", 4096, NULL, 2, NULL);
-        // Task Sensor (Ưu tiên cao nhất để không lỡ nhịp dữ liệu)
+        xTaskCreate(Task_Toogle_BOOT, "Task_Toogle_BOOT", 4096, (void*)sharedData, 2, NULL);
         xTaskCreate(TaskSensor, "Sensor_Task", 4096, (void*)sharedData, 4, NULL);
         
-        // Các Task điều khiển phần cứng (Ưu tiên trung bình)
         xTaskCreate(TaskLEDControl, "LED_Task", 2048, (void*)sharedData, 3, NULL);
         xTaskCreate(neo_blinky, "NeoPixel_Task", 2048, (void*)sharedData, 3, NULL);
         xTaskCreate(TaskLCD, "LCD_Task", 4096, (void*)sharedData, 3, NULL);
-        
-        // --- THÊM TASK 5: TINYML ANOMALY DETECTION ---
-        // Cấp phát 8192 bytes RAM (TensorFlow ngốn khá nhiều RAM)
-        // Mức ưu tiên thấp nhất (Priority 1) vì AI chạy tốn CPU, không được làm nghẽn các Task khác
+
         xTaskCreate(tiny_ml_task, "TinyML_Task", 8192, (void*)sharedData, 1, NULL);
         
         Serial.println("Tao Task thanh cong! He thong dang chay...");
     }
 
-    InitWebServer((void *)sharedData);
-    xTaskCreate(coreiot_task, "CoreIOT_Task", 8192, (void*)sharedData, 2, NULL);
+    // InitWebServer((void *)sharedData);
+    // xTaskCreate(coreiot_task, "CoreIOT_Task", 8192, (void*)sharedData, 2, NULL);
 }
 
 void loop() {

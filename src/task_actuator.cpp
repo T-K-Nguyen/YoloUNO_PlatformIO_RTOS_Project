@@ -202,7 +202,7 @@ void neo_blinky(void *pvParameters) {
             }
         }
 
-        // Ánh xạ màu sắc [cite: 20, 22]
+        // Ánh xạ màu sắc
         switch (currentState) {
             case HUM_DRY:     
                 targR = 255; targG = 120; targB = 0; 

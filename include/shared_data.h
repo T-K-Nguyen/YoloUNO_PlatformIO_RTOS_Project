@@ -13,6 +13,13 @@ enum LcdDisplayState {
     LCD_ERROR
 };
 
+enum SensorRunMode {
+    SENSOR_MODE_NORMAL,
+    SENSOR_MODE_FIXED_24_30,
+    SENSOR_MODE_FIXED_30_50,
+    SENSOR_MODE_FIXED_30_70
+};
+
 // struct TinyMLInputSample {
 //     float temperature;
 //     float humidity;
@@ -25,6 +32,7 @@ struct SensorData {
 
     uint32_t lastSensorUpdateTick;
     LcdDisplayState currentLcdState; 
+    SensorRunMode sensorRunMode;
 
     // --- THÊM: CÁC NGƯỠNG CÀI ĐẶT ĐỘNG (DYNAMIC THRESHOLDS) ---
     float tempWarning;   // Ngưỡng cảnh báo nhiệt độ
@@ -42,7 +50,7 @@ struct SensorData {
     SemaphoreHandle_t i2cMutex;
     SemaphoreHandle_t tempWarningSemaphore; 
     SemaphoreHandle_t lcdUpdateSemaphore; 
-    // QueueHandle_t tinymlInputQueue;
+    QueueHandle_t tinymlInputQueue;
 };
 
 #endif
